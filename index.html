@@ -542,15 +542,15 @@
 // ===================== SUPABASE =====================
 const SUPABASE_URL = 'https://iqrdgfhoqlckyyxrpqsj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxcmRnZmhvcWxja3l5eHJwcXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMjc5MzIsImV4cCI6MjA4NzgwMzkzMn0.XnsmnhutJKIq11Zq2B9oseidlcyo7mDcmItbLg-0RXE';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // In-memory DB (synced from Supabase)
 let DB = { athletes:[], sessions:[] };
 
 async function loadDB(){
   const [athRes, sessRes] = await Promise.all([
-    supabase.from('athletes').select('*'),
-    supabase.from('sessions').select('*')
+    sbClient.from('athletes').select('*'),
+    sbClient.from('sessions').select('*')
   ]);
   if(athRes.error) console.error('Athletes load error:', athRes.error);
   if(sessRes.error) console.error('Sessions load error:', sessRes.error);
@@ -587,19 +587,19 @@ function mapSessToDB(s){
 }
 
 async function saveAthleteDB(ath){
-  const {error} = await supabase.from('athletes').upsert(mapAthToDB(ath));
+  const {error} = await sbClient.from('athletes').upsert(mapAthToDB(ath));
   if(error) { toast('Erreur sauvegarde athlète','error'); console.error(error); }
 }
 async function deleteAthleteDB(id){
-  const {error} = await supabase.from('athletes').delete().eq('id',id);
+  const {error} = await sbClient.from('athletes').delete().eq('id',id);
   if(error) { toast('Erreur suppression','error'); console.error(error); }
 }
 async function saveSessionDB(sess){
-  const {error} = await supabase.from('sessions').upsert(mapSessToDB(sess));
+  const {error} = await sbClient.from('sessions').upsert(mapSessToDB(sess));
   if(error) { toast('Erreur sauvegarde séance','error'); console.error(error); }
 }
 async function deleteSessionDB(id){
-  const {error} = await supabase.from('sessions').delete().eq('id',id);
+  const {error} = await sbClient.from('sessions').delete().eq('id',id);
   if(error) { toast('Erreur suppression','error'); console.error(error); }
 }
 
@@ -1549,7 +1549,7 @@ function openEditAthlete(){
   switchAthTab('infos', document.querySelector('#athleteModal .modal-tab'));
   document.getElementById('athleteModal').classList.add('open');
 }
-async async function saveAthlete(){
+async function saveAthlete(){
   const n=document.getElementById('newAthName').value.trim();
   const sp=document.getElementById('newAthSport').value;
   const sx=document.getElementById('newAthSex').value;
