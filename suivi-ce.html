@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Suivi CE</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<style>
+  :root{--bg:#0b0e14;--bg2:#111520;--bg3:#161b28;--border:#1e2535;--accent:#00e5ff;--accent2:#ff6b35;--text:#e8eaf0;--text2:#7a8099;--green:#00c896;--orange:#ff9f1c;--red:#ff3860;--card:#131826;--radius:12px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+#app{display:none;}
+  #loadingOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
+  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:.8rem;color:var(--text2);font-family:'DM Mono',monospace;}
+  .topbar{height:56px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:100;}
+  .topbar-logo{font-family:'Poppins',sans-serif;font-size:1rem;font-weight:600;color:var(--accent);flex:1;}
+  .topbar-user{font-size:.75rem;color:var(--text2);display:flex;align-items:center;gap:8px;}
+  .topbar-user span{color:var(--text);font-size:.8rem;}
+  .logout-btn{padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer;transition:all .2s;}
+  .logout-btn:hover{border-color:var(--red);color:var(--red);}
+  .main-layout{display:flex;min-height:calc(100vh - 56px);}
+  .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;}
+  .sidebar-section{padding:0 16px;margin-bottom:20px;}
+  .sidebar-label{font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;padding:0 8px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:.8rem;transition:all .2s;margin-bottom:2px;}
+  .nav-item:hover{background:var(--bg3);color:var(--text);}
+  .nav-item.active{background:rgba(0,229,255,.1);color:var(--accent);}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;}
+  .content{flex:1;padding:28px;overflow-y:auto;}
+  .page{display:none;}
+  .page.active{display:block;}
+  .page-title{font-family:'Poppins',sans-serif;font-size:1.25rem;font-weight:600;margin-bottom:4px;}
+  .page-sub{color:var(--text2);font-size:.78rem;margin-bottom:24px;}
+  .cards-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:24px;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+  .kpi-card.green::before{background:var(--green);}
+  .kpi-card.orange::before{background:var(--orange);}
+  .kpi-card.red::before{background:var(--red);}
+  .kpi-card.blue::before{background:var(--accent);}
+  .kpi-card.purple::before{background:#a855f7;}
+  .kpi-label{font-size:.62rem;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;}
+  .kpi-val{font-family:'Poppins',sans-serif;font-size:1.7rem;font-weight:600;}
+  .kpi-sub{font-size:.68rem;color:var(--text2);margin-top:4px;}
+  .chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+  .chart-title{font-family:'Poppins',sans-serif;font-weight:600;font-size:.88rem;}
+  .chart-wrap{position:relative;height:280px;}
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:18px;}
+  .table-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .table-title{font-family:'Poppins',sans-serif;font-weight:600;font-size:.85rem;}
+  table{width:100%;border-collapse:collapse;}
+  th{padding:9px 12px;text-align:left;font-size:.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--border);background:var(--bg3);white-space:nowrap;}
+  td{padding:9px 12px;font-size:.74rem;border-bottom:1px solid rgba(30,37,53,.5);}
+  tr:last-child td{border-bottom:none;}
+  .risk-high{color:var(--red);}
+  .risk-med{color:var(--orange);}
+  .risk-low{color:var(--green);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;font-weight:500;}
+  .badge-high{background:rgba(255,56,96,.12);color:var(--red);border:1px solid rgba(255,56,96,.3);font-size:.58rem;}
+  .badge-med{background:rgba(255,159,28,.12);color:var(--orange);border:1px solid rgba(255,159,28,.3);font-size:.58rem;}
+  .badge-low{background:rgba(0,200,150,.08);color:var(--green);border:1px solid rgba(0,200,150,.2);font-size:.58rem;}
+
+  .link-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .link-url{flex:1;font-size:.7rem;color:var(--text2);word-break:break-all;font-family:'DM Mono',monospace;}
+  .btn-copy{padding:5px 12px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .btn-copy:hover{background:var(--accent);color:#000;}
+  .btn-copy.copied{background:var(--green);border-color:var(--green);color:#000;}
+  .form-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .modal{max-height:90vh;overflow-y:auto;}
+  .modal-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;}
+  .modal-tab{padding:8px 16px;font-size:.72rem;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-family:'DM Mono',monospace;}
+  .modal-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .modal-tab-panel{display:none;}
+  .modal-tab-panel.active{display:block;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .cal-day.cycle{background:rgba(236,72,153,.15);border-color:rgba(236,72,153,.4);color:#f9a8d4;}
+  .cal-day.cycle-start{background:rgba(236,72,153,.3);border-color:rgba(236,72,153,.6);color:#f472b6;font-weight:700;}
+  .cycle-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.6rem;background:rgba(236,72,153,.15);color:#f472b6;border:1px solid rgba(236,72,153,.3);margin-left:6px;}
+  .section-title{font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;margin-top:4px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .form-group label{display:block;font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+  .form-group input,.form-group select{width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.85rem;outline:none;transition:border .2s;}
+  .form-group input:focus,.form-group select:focus{border-color:var(--accent);}
+  .btn{padding:10px 20px;border-radius:8px;border:none;font-family:'Poppins',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;}
+  .btn-primary{background:var(--accent);color:#000;}
+  .btn-primary:hover{opacity:.85;}
+  .btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text2);}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-danger{background:transparent;border:1px solid rgba(255,56,96,.3);color:var(--red);font-size:.75rem;padding:6px 12px;}
+  .btn-danger:hover{background:rgba(255,56,96,.1);}
+  .rpe-scale{display:flex;gap:4px;margin-bottom:6px;}
+  .rpe-btn{flex:1;padding:8px 4px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:.75rem;font-weight:500;transition:all .2s;text-align:center;}
+  .rpe-btn:hover{transform:scale(1.08);}
+  .rpe-btn.selected{outline:2px solid white;}
+  .rpe-labels{display:flex;justify-content:space-between;font-size:.6rem;color:var(--text2);margin-bottom:12px;}
+  .rpe-desc{font-size:.72rem;min-height:18px;text-align:center;margin-bottom:10px;color:var(--text2);}
+  .sessions-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+  .session-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;}
+  .session-tag{padding:3px 9px;border-radius:4px;font-size:.62rem;text-transform:uppercase;letter-spacing:1px;flex-shrink:0;}
+  .session-tag.tennis{background:rgba(0,229,255,.15);color:var(--accent);border:1px solid rgba(0,229,255,.3);}
+  .session-tag.physique{background:rgba(255,107,53,.15);color:var(--accent2);border:1px solid rgba(255,107,53,.3);}
+  .session-info{flex:1;}
+  .session-info strong{font-size:.8rem;}
+  .session-info span{font-size:.68rem;color:var(--text2);margin-left:8px;}
+  .summary-banner{margin-bottom:20px;border-radius:12px;border:1px solid;padding:16px 20px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;}
+  .summary-banner.red{background:rgba(255,56,96,.07);border-color:rgba(255,56,96,.3);}
+  .summary-banner.orange{background:rgba(255,159,28,.07);border-color:rgba(255,159,28,.3);}
+  .summary-banner.green{background:rgba(0,200,150,.07);border-color:rgba(0,200,150,.3);}
+  .summary-icon{font-size:1.8rem;line-height:1;}
+  .summary-verdict{font-family:'Poppins',sans-serif;font-weight:600;font-size:.92rem;margin-bottom:4px;}
+  .summary-detail{font-size:.72rem;color:var(--text2);line-height:1.7;}
+  .summary-detail span{font-weight:500;}
+  .summary-detail span.ok{color:var(--green);}
+  .summary-detail span.warn{color:var(--orange);}
+  .summary-detail span.bad{color:var(--red);}
+  .summary-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .pill{padding:2px 9px;border-radius:20px;font-size:.62rem;font-family:'DM Mono',monospace;border:1px solid;}
+  .pill.ok{background:rgba(0,200,150,.1);border-color:rgba(0,200,150,.3);color:var(--green);}
+  .pill.warn{background:rgba(255,159,28,.1);border-color:rgba(255,159,28,.3);color:var(--orange);}
+  .pill.bad{background:rgba(255,56,96,.1);border-color:rgba(255,56,96,.3);color:var(--red);}
+  .calendar-nav{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .cal-btn{background:transparent;border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:1rem;transition:all .2s;}
+  .cal-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .cal-month{font-family:'Poppins',sans-serif;font-weight:600;font-size:.88rem;flex:1;text-align:center;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-day-header{text-align:center;font-size:.58rem;color:var(--text2);text-transform:uppercase;padding:3px;}
+  .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:7px;font-size:.76rem;cursor:pointer;position:relative;transition:all .2s;border:1px solid transparent;}
+  .cal-day:hover{background:var(--bg3);}
+  .cal-day.today{border-color:var(--accent);color:var(--accent);}
+  .cal-day.selected{background:var(--accent);color:#000;font-weight:600;}
+  .cal-day.has-data::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent2);}
+  .cal-day.has-data.selected::after{background:#000;}
+  .cal-day.other-month{color:var(--text2);opacity:.4;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:30px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;}
+  .modal-title{font-family:'Poppins',sans-serif;font-weight:600;font-size:1rem;margin-bottom:18px;}
+  .modal-close{position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .2s;}
+  .modal-close:hover{background:var(--bg3);color:var(--text);}
+  .athlete-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:22px;}
+  .athlete-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:all .2s;}
+  .athlete-card:hover{border-color:var(--accent);}
+  .athlete-card.selected-ath{border-color:var(--accent);background:rgba(0,229,255,.05);}
+  .athlete-avatar{width:42px;height:42px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:600;font-size:1rem;color:var(--accent);margin-bottom:10px;border:2px solid var(--border);}
+  .athlete-name{font-family:'Poppins',sans-serif;font-weight:600;font-size:.88rem;margin-bottom:3px;}
+  .athlete-sport{font-size:.68rem;color:var(--text2);}
+  .divider{border:none;border-top:1px solid var(--border);margin:18px 0;}
+  .flex-row{display:flex;align-items:center;gap:12px;}
+  .flex-row.between{justify-content:space-between;}
+  .period-selector{display:flex;gap:5px;flex-wrap:wrap;}
+  .period-btn{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'DM Mono',monospace;font-size:.7rem;cursor:pointer;transition:all .2s;}
+  .period-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:.66rem;color:var(--text2);}
+  .legend-dot{width:9px;height:9px;border-radius:50%;}
+  #toastContainer{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+  .toast{padding:12px 18px;border-radius:8px;font-size:.78rem;display:flex;align-items:center;gap:8px;animation:slideIn .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+  .toast-success{background:rgba(0,200,150,.92);color:#000;}
+  .toast-error{background:rgba(255,56,96,.92);color:#fff;}
+  @keyframes slideIn{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+  .empty-state{text-align:center;padding:32px 20px;color:var(--text2);}
+  .empty-state p{font-size:.82rem;}
+  .ctrl-bar{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;}
+  .ctrl-grp{display:flex;flex-direction:column;gap:5px;}
+  .ctrl-grp label{font-size:.62rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;}
+  .fitness-legend{background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px 14px;font-size:.72rem;color:var(--text2);margin-bottom:14px;line-height:1.8;}
+  .fitness-legend strong{color:#c084fc;}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div style="font-size:2rem">⚡</div>
+  <div class="spinner"></div>
+  <div class="loading-text">Connexion à la base de données...</div>
+</div>
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">SUIVI CE</div>
+    <div class="topbar-user" id="topbarUserBadge" style="background:rgba(0,229,255,.08);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:.72rem;color:var(--text2)">⚡ Vue coach</div>
+  </div>
+  <div class="main-layout">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Navigation</div>
+        <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('entry')" id="nav-entry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Saisie
+        </div>
+        <div class="nav-item" onclick="showPage('suivi')" id="nav-suivi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Suivi
+        </div>
+        <div class="nav-item" id="nav-coach" onclick="showPage('coach')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Athlètes
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-title">Tableau de bord</div>
+        <div class="page-sub" id="dashSub">Aperçu global — Méthode Foster</div>
+        <div id="alertsContainer" class="alerts-container"></div>
+        <div class="cards-row" id="kpiRow"></div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Charge quotidienne (CE)</div>
+            <div class="period-selector">
+              <button class="period-btn active" onclick="setPeriod(7,this)">7j</button>
+              <button class="period-btn" onclick="setPeriod(14,this)">14j</button>
+              <button class="period-btn" onclick="setPeriod(28,this)">28j</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="ceChart"></canvas></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><div class="chart-title">Monotonie & Contrainte</div></div>
+            <div class="chart-wrap" style="height:200px"><canvas id="monotonyChart"></canvas></div>
+          </div>
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><div class="chart-title">ACWR</div></div>
+            <div class="chart-wrap" style="height:200px"><canvas id="acwrChart"></canvas></div>
+          </div>
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header">
+              <div><div class="chart-title">Score de Fitness</div><div style="font-size:.62rem;color:#a855f7;margin-top:2px">Modèle Banister</div></div>
+            </div>
+            <div class="chart-wrap" style="height:200px"><canvas id="dashFitnessChart"></canvas></div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Historique des séances</div></div>
+          <div style="overflow-x:auto"><table>
+            <thead><tr><th>Date</th><th>Type</th><th>RPE</th><th>Durée</th><th>CE</th><th>Monotonie</th><th>Contrainte</th><th>ACWR</th><th>Fitness</th><th>Fatigue</th><th>Forme</th><th>Risque</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- SAISIE -->
+      <div class="page" id="page-entry">
+        <div class="page-title">Saisie de séance</div>
+        <div class="page-sub">Enregistrez les entraînements du jour</div>
+        <div style="display:grid;grid-template-columns:290px 1fr;gap:18px">
+          <div>
+            <div class="form-card">
+              <div class="chart-title" style="margin-bottom:12px">Calendrier</div>
+              <div class="calendar-nav">
+                <button class="cal-btn" onclick="calPrev()">‹</button>
+                <div class="cal-month" id="calMonthLabel"></div>
+                <button class="cal-btn" onclick="calNext()">›</button>
+              </div>
+              <div class="cal-grid" id="calGrid"></div>
+            </div>
+            <div class="form-card">
+              <div class="chart-title" style="margin-bottom:12px">Séances du <span id="selectedDateLabel">—</span></div>
+              <div id="daySessionsList"><div class="empty-state" style="padding:16px"><p>Aucune séance ce jour</p></div></div>
+              <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="openAddSession()">+ Ajouter une séance</button>
+              <div id="cycleEntryBtn" style="display:none;margin-top:8px">
+                <button class="btn" style="width:100%;background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.4);color:#f472b6;font-size:.75rem" onclick="openCycleModal()">🌸 Enregistrer période menstruelle</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div id="athleteSelectorEntry" class="form-card" style="display:none">
+              <div class="chart-title" style="margin-bottom:12px">Athlète sélectionné</div>
+              <select id="entryAthleteSelect" style="width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:DM Mono,monospace;font-size:.82rem;outline:none" onchange="onEntryAthleteChange()"></select>
+            </div>
+            <div class="form-card">
+              <div class="chart-title" style="margin-bottom:14px">Indicateurs du jour</div>
+              <div class="cards-row" id="dayKpiRow" style="margin-bottom:0"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUIVI -->
+      <div class="page" id="page-suivi">
+        <div class="page-title">Suivi détaillé</div>
+        <div class="page-sub">Foster CE · Fitness · Fatigue · Forme — Vue quotidienne ou hebdomadaire</div>
+
+        <div class="ctrl-bar">
+          <div id="suiviAthSelector" style="display:none" class="ctrl-grp" style="flex:1;min-width:180px">
+            <label>Athlète</label>
+            <select id="suiviAthleteSelect" style="padding:8px 11px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:DM Mono,monospace;font-size:.8rem;outline:none;min-width:160px" onchange="renderSuivi()"></select>
+          </div>
+          <div class="ctrl-grp">
+            <label>Vue</label>
+            <div class="period-selector">
+              <button class="period-btn active" id="viewDailyBtn" onclick="setSuiviView('daily',this)">📅 Quotidien</button>
+              <button class="period-btn" id="viewWeeklyBtn" onclick="setSuiviView('weekly',this)">📆 Hebdo</button>
+            </div>
+          </div>
+          <div class="ctrl-grp">
+            <label>Période</label>
+            <div class="period-selector" id="suiviPeriodBtns">
+              <button class="period-btn active" onclick="setSuiviPeriod(14,this)">14j / 2sem</button>
+              <button class="period-btn" onclick="setSuiviPeriod(28,this)">28j / 4sem</button>
+              <button class="period-btn" onclick="setSuiviPeriod(56,this)">56j / 8sem</button>
+              <button class="period-btn" onclick="setSuiviPeriod(84,this)">84j / 12sem</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="weeklyKpiCards" style="display:none;margin-bottom:18px">
+          <div class="cards-row" id="weeklyKpiRow"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title" id="suiviCeTitle">CE — Vue quotidienne</div>
+              <div style="font-size:.68rem;color:var(--text2);margin-top:3px">
+                <span id="ceZoneLegend"><span style="color:var(--green)">●</span> Optimal &lt;500 &nbsp; <span style="color:var(--orange)">●</span> Attention 500–800 &nbsp; <span style="color:var(--red)">●</span> Surcharge &gt;800</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:280px"><canvas id="suiviCeChart"></canvas></div>
+        </div>
+
+        <div class="fitness-legend">
+          <strong>Score de Fitness — Modèle de Banister :</strong> &nbsp;
+          <span style="color:#00c896">Fitness (CTL, τ=45j)</span> = adaptation à long terme (forme physique accumulée) &nbsp;·&nbsp;
+          <span style="color:#ff3860">Fatigue (ATL, τ=15j)</span> = fatigue à court terme &nbsp;·&nbsp;
+          <span style="color:#a855f7">Forme (TSB)</span> = Fitness − Fatigue · Positif = frais · Négatif = fatigué
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Score de Fitness — Banister (CTL/ATL/TSB)</div></div>
+            <div class="legend">
+              <div class="legend-item"><div style="width:14px;height:2px;background:var(--green)"></div>Fitness CTL</div>
+              <div class="legend-item"><div style="width:14px;height:2px;background:var(--red)"></div>Fatigue ATL</div>
+              <div class="legend-item"><div style="width:14px;height:2px;background:#a855f7"></div>Forme TSB</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:260px"><canvas id="suiviFitnessChart"></canvas></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><div class="chart-title">Monotonie</div><div style="font-size:.62rem;color:var(--text2)">Seuil: <span style="color:var(--red)">2.0</span></div></div>
+            <div class="chart-wrap" style="height:190px"><canvas id="suiviMonotonyChart"></canvas></div>
+          </div>
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><div class="chart-title">Contrainte</div></div>
+            <div class="chart-wrap" style="height:190px"><canvas id="suiviStrainChart"></canvas></div>
+          </div>
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><div class="chart-title">ACWR</div><div style="font-size:.62rem;color:var(--text2)">Optimal: <span style="color:var(--green)">0.8–1.3</span></div></div>
+            <div class="chart-wrap" style="height:190px"><canvas id="suiviAcwrChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="table-card" id="tblDaily">
+          <div class="table-header"><div class="table-title">Tableau — Séances individuelles</div></div>
+          <div style="overflow-x:auto"><table>
+            <thead><tr><th>Date</th><th>Type</th><th>RPE</th><th>Durée</th><th>CE</th><th>Σ CE 7j</th><th>Monotonie</th><th>Contrainte</th><th>ACWR</th><th>Fitness</th><th>Fatigue</th><th>Forme</th><th>Risque</th></tr></thead>
+            <tbody id="suiviBody"></tbody>
+          </table></div>
+        </div>
+
+        <div class="table-card" id="tblWeekly" style="display:none">
+          <div class="table-header"><div class="table-title">Tableau — Vue hebdomadaire</div></div>
+          <div style="overflow-x:auto"><table>
+            <thead><tr><th>Semaine</th><th>Séances</th><th>CE Total</th><th>CE moy/j</th><th>RPE moy</th><th>Monotonie</th><th>Contrainte</th><th>ACWR</th><th>Fitness</th><th>Fatigue</th><th>Forme</th><th>Risque</th></tr></thead>
+            <tbody id="suiviWeeklyBody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- COACH -->
+      <div class="page" id="page-coach">
+        <div class="page-title">Gestion des athlètes</div>
+        <div class="page-sub">Ajoutez et gérez vos athlètes</div>
+        <div class="flex-row between" style="margin-bottom:18px">
+          <div></div>
+          <button class="btn btn-primary" onclick="openAddAthlete()">+ Nouvel athlète</button>
+        </div>
+        <div class="athlete-grid" id="athleteGrid"></div>
+        <div id="coachAthleteDetail" style="display:none">
+          <hr class="divider">
+          <div class="flex-row between" style="margin-bottom:10px;flex-wrap:wrap;gap:10px">
+            <div>
+              <div class="page-title" id="coachAthName"></div>
+              <div id="coachAthMeta" style="font-size:.7rem;color:var(--text2);margin-top:3px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-secondary" onclick="openEditAthlete()" style="font-size:.72rem;padding:6px 14px">✏️ Modifier</button>
+              <button id="coachCycleBtn" class="btn" style="font-size:.72rem;padding:6px 14px;background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.4);color:#f472b6;display:none" onclick="openCycleModal()">🌸 Cycle</button>
+              <button class="btn btn-danger" onclick="deleteAthlete()" style="font-size:.72rem;padding:6px 14px">Supprimer</button>
+            </div>
+          </div>
+          <div class="cards-row" id="coachKpiRow"></div>
+          <div class="chart-card">
+            <div class="chart-header"><div class="chart-title">CE & Fitness récents (14j)</div></div>
+            <div class="chart-wrap" style="height:210px"><canvas id="coachChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Session -->
+<div class="modal-overlay" id="sessionModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('sessionModal')">✕</button>
+    <div class="modal-title">Nouvelle séance</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Type de séance</label>
+      <select id="sessType"><option value="tennis">Tennis</option><option value="physique">Physique</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:6px"><label>RPE — Effort perçu (0-10)</label></div>
+    <div class="rpe-scale" id="rpeScale"></div>
+    <div class="rpe-labels"><span>Repos</span><span>Très léger</span><span>Léger</span><span>Modéré</span><span>Difficile</span><span>Max</span></div>
+    <div class="rpe-desc" id="rpeDesc">Sélectionnez un RPE</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Durée (minutes)</label>
+      <input type="number" id="sessDuration" min="1" max="360" placeholder="Ex: 90" />
+    </div>
+    <div class="form-group" style="margin-bottom:6px">
+      <label>Notes (optionnel)</label>
+      <input type="text" id="sessNotes" placeholder="Observations..." />
+    </div>
+    <div style="margin-top:18px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveSession()">Enregistrer</button>
+      <button class="btn btn-secondary" onclick="closeModal('sessionModal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Athlete (create + edit) -->
+<div class="modal-overlay" id="athleteModal">
+  <div class="modal" style="width:520px">
+    <button class="modal-close" onclick="closeModal('athleteModal')">✕</button>
+    <div class="modal-title" id="athleteModalTitle">Nouvel athlète</div>
+    <input type="hidden" id="editAthId" value="">
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchAthTab('infos',this)">Profil</div>
+      <div class="modal-tab" onclick="switchAthTab('physique',this)">Physique</div>
+    </div>
+    <!-- TAB: Infos -->
+    <div class="modal-tab-panel active" id="athTab-infos">
+      <div class="form-group" style="margin-bottom:14px"><label>Nom complet</label><input type="text" id="newAthName" placeholder="Ex: Martin Dupont" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Sport</label><select id="newAthSport"><option>Tennis</option><option>Tennis + Physique</option><option>Physique</option></select></div>
+        <div class="form-group"><label>Sexe</label><select id="newAthSex"><option value="M">Homme</option><option value="F">Femme</option></select></div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Classement FFT</label>
+        <select id="newAthRanking" onchange="updateLevelFromRanking(this.value)">
+          <optgroup label="🟢 Loisir">
+            <option value="4e série">4e série</option>
+          </optgroup>
+          <optgroup label="🔵 Compétiteur">
+            <option value="30">30</option>
+            <option value="15/5">15/5</option>
+            <option value="15/4">15/4</option>
+            <option value="15/3">15/3</option>
+            <option value="15/2">15/2</option>
+            <option value="15/1">15/1</option>
+          </optgroup>
+          <optgroup label="🟡 Très bon">
+            <option value="15">15</option>
+            <option value="5/6">5/6</option>
+            <option value="4/6">4/6</option>
+            <option value="3/6">3/6</option>
+          </optgroup>
+          <optgroup label="🟠 National">
+            <option value="2/6">2/6</option>
+            <option value="1/6">1/6</option>
+            <option value="0">0</option>
+          </optgroup>
+          <optgroup label="🔴 Pro">
+            <option value="-2/6">-2/6</option>
+            <option value="-4/6">-4/6</option>
+            <option value="-15">-15</option>
+            <option value="N°FR">N°FR</option>
+          </optgroup>
+        </select>
+        <input type="hidden" id="newAthLevel" value="regional">
+      </div>
+    </div>
+    <!-- TAB: Physique -->
+    <div class="modal-tab-panel" id="athTab-physique">
+      <div class="form-row">
+        <div class="form-group"><label>Âge</label><input type="number" id="newAthAge" min="10" max="60" placeholder="Ex: 22" oninput="updateIMC()"/></div>
+        <div class="form-group"><label>Poids (kg)</label><input type="number" id="newAthWeight" min="30" max="150" placeholder="Ex: 68" oninput="updateIMC()"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Taille (cm)</label><input type="number" id="newAthHeight" min="140" max="220" placeholder="Ex: 175" oninput="updateIMC()"/></div>
+        <div class="form-group" style="display:flex;align-items:flex-end">
+          <div style="font-size:.75rem;color:var(--text2);padding-bottom:10px" id="imc-display">IMC : —</div>
+        </div>
+      </div>
+      <div style="font-size:.68rem;color:var(--text2)">Ces données permettent d'affiner les calculs de charge relative (CE par kg de masse corporelle).</div>
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:10px">
+      <button class="btn btn-primary" id="saveAthBtn" onclick="saveAthlete()">Créer</button>
+      <button class="btn btn-secondary" onclick="closeModal('athleteModal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Cycle menstruel -->
+<div class="modal-overlay" id="cycleModal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeModal('cycleModal')">✕</button>
+    <div class="modal-title">🌸 Cycle menstruel</div>
+    <div style="font-size:.72rem;color:var(--text2);margin-bottom:16px;line-height:1.6">
+      Enregistrer une période pour <strong id="cycleAthName">—</strong>.<br>
+      Les seuils de charge seront ajustés automatiquement pendant cette période.
+    </div>
+    <div class="form-group" style="margin-bottom:14px"><label>Date de début</label><input type="date" id="cycleStart" /></div>
+    <div class="form-group" style="margin-bottom:14px"><label>Date de fin</label><input type="date" id="cycleEnd" /></div>
+    <div style="font-size:.65rem;color:var(--text2);margin-bottom:14px;padding:10px;background:rgba(236,72,153,.06);border-radius:8px;border:1px solid rgba(236,72,153,.2)">
+      💡 Pendant les règles : seuils CE réduits de 20%, ACWR plus prudent, récupération prioritaire.
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="background:#db2777;border-color:#db2777" onclick="saveCycle()">Enregistrer</button>
+      <button class="btn btn-secondary" onclick="closeModal('cycleModal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+// ===================== SUPABASE =====================
+const SUPABASE_URL = 'https://iqrdgfhoqlckyyxrpqsj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxcmRnZmhvcWxja3l5eHJwcXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMjc5MzIsImV4cCI6MjA4NzgwMzkzMn0.XnsmnhutJKIq11Zq2B9oseidlcyo7mDcmItbLg-0RXE';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// In-memory DB (synced from Supabase)
+let DB = { athletes:[], sessions:[] };
+
+async function loadDB(){
+  const [athRes, sessRes] = await Promise.all([
+    supabase.from('athletes').select('*'),
+    supabase.from('sessions').select('*')
+  ]);
+  if(athRes.error) console.error('Athletes load error:', athRes.error);
+  if(sessRes.error) console.error('Sessions load error:', sessRes.error);
+  DB.athletes = (athRes.data||[]).map(a=>mapAthFromDB(a));
+  DB.sessions  = (sessRes.data||[]).map(s=>mapSessFromDB(s));
+}
+
+// DB field mapping helpers (snake_case ↔ camelCase)
+function mapAthFromDB(a){
+  return {
+    id: a.id, name: a.name, sport: a.sport, sex: a.sex,
+    level: a.level, age: a.age, weight: a.weight, height: a.height,
+    rankingFR: a.ranking_fr, cycles: a.cycles||[]
+  };
+}
+function mapAthToDB(a){
+  return {
+    id: a.id, name: a.name, sport: a.sport, sex: a.sex,
+    level: a.level, age: a.age||null, weight: a.weight||null, height: a.height||null,
+    ranking_fr: a.rankingFR||null, cycles: a.cycles||[]
+  };
+}
+function mapSessFromDB(s){
+  return {
+    id: s.id, athleteId: s.athlete_id, date: s.date,
+    type: s.type, rpe: s.rpe, duration: s.duration, notes: s.notes||''
+  };
+}
+function mapSessToDB(s){
+  return {
+    id: s.id, athlete_id: s.athleteId, date: s.date,
+    type: s.type, rpe: s.rpe, duration: s.duration, notes: s.notes||''
+  };
+}
+
+async function saveAthleteDB(ath){
+  const {error} = await supabase.from('athletes').upsert(mapAthToDB(ath));
+  if(error) { toast('Erreur sauvegarde athlète','error'); console.error(error); }
+}
+async function deleteAthleteDB(id){
+  const {error} = await supabase.from('athletes').delete().eq('id',id);
+  if(error) { toast('Erreur suppression','error'); console.error(error); }
+}
+async function saveSessionDB(sess){
+  const {error} = await supabase.from('sessions').upsert(mapSessToDB(sess));
+  if(error) { toast('Erreur sauvegarde séance','error'); console.error(error); }
+}
+async function deleteSessionDB(id){
+  const {error} = await supabase.from('sessions').delete().eq('id',id);
+  if(error) { toast('Erreur suppression','error'); console.error(error); }
+}
+
+// ===================== ROUTING =====================
+let currentUser = null;
+
+async function detectMode(){
+  // Load all data first
+  await loadDB();
+  document.getElementById('loadingOverlay').style.display='none';
+
+  // Detect role from URL hash or query param
+  const hash = window.location.hash.replace('#','');
+  const hashParams = new URLSearchParams(hash);
+  const queryParams = new URLSearchParams(window.location.search);
+  const athId = hashParams.get('athlete') || queryParams.get('athlete');
+
+  if(athId){
+    const ath = DB.athletes.find(a=>a.id===athId);
+    if(ath){
+      currentUser = {role:'athlete', athleteId:ath.id, name:ath.name};
+    } else {
+      currentUser = {role:'coach', name:'Coach'};
+      setTimeout(()=>toast('Lien athlète invalide ou athlète supprimé.','error'),500);
+    }
+  } else {
+    currentUser = {role:'coach', name:'Coach'};
+  }
+  startApp();
+}
+
+function startApp(){
+  document.getElementById('app').style.display='block';
+  const badge = document.getElementById('topbarUserBadge');
+  if(currentUser.role==='athlete'){
+    badge.textContent = '⚡ ' + currentUser.name;
+    badge.style.color = 'var(--accent)';
+    document.getElementById('nav-coach').style.display='none';
+    document.getElementById('athleteSelectorEntry').style.display='none';
+  } else {
+    badge.textContent = '🎯 Vue Coach';
+    badge.style.color = 'var(--text2)';
+    document.getElementById('nav-coach').style.display='flex';
+    document.getElementById('athleteSelectorEntry').style.display='block';
+    populateAthleteSelectors();
+  }
+  renderCalendar();
+  showPage('dashboard');
+}
+
+// ===================== NAV =====================
+let currentPage='dashboard';
+function showPage(p){
+  currentPage=p;
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  if(p==='dashboard')renderDashboard();
+  else if(p==='entry')renderEntry();
+  else if(p==='suivi')renderSuivi();
+  else if(p==='coach')renderCoach();
+}
+
+// ===================== HELPERS =====================
+function getAthId(){
+  if(currentUser&&currentUser.role==='athlete')return currentUser.athleteId;
+  if(currentPage==='entry'){const s=document.getElementById('entryAthleteSelect');return s?s.value||DB.athletes[0]?.id:DB.athletes[0]?.id;}
+  if(currentPage==='suivi'){const s=document.getElementById('suiviAthleteSelect');return s?s.value||DB.athletes[0]?.id:DB.athletes[0]?.id;}
+  return DB.athletes[0]?.id;
+}
+function getSessions(athId,days){
+  let s=DB.sessions.filter(s=>s.athleteId===athId);
+  if(days){const c=new Date();c.setDate(c.getDate()-days);s=s.filter(s=>new Date(s.date)>=c);}
+  return s.sort((a,b)=>a.date.localeCompare(b.date));
+}
+function fmtDate(d){return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function fmtShort(d){return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});}
+function dateKey(d){return new Date(d).toISOString().split('T')[0];}
+function groupByDate(sessions){
+  const m={};sessions.forEach(s=>{if(!m[s.date])m[s.date]=[];m[s.date].push(s);});return m;
+}
+function computeCE(rpe,dur){return rpe*dur;}
+
+// ===================== BANISTER FITNESS MODEL =====================
+// CTL (Chronic Training Load / Fitness): τ = 45 days
+// ATL (Acute Training Load / Fatigue): τ = 15 days  
+// TSB (Training Stress Balance / Forme): CTL - ATL
+const TAU_CTL=45, TAU_ATL=15;
+const K_CTL=Math.exp(-1/TAU_CTL), K_ATL=Math.exp(-1/TAU_ATL);
+
+function computeMetrics(allSessions, _thresholds){
+  const byDate=groupByDate(allSessions);
+  const allDates=Object.keys(byDate).sort();
+  if(!allDates.length)return[];
+
+  // Build continuous day array from first session to today
+  const startD=new Date(allDates[0]);
+  const endD=new Date();
+  const days=[];
+  for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
+    days.push(dateKey(new Date(d)));
+  }
+
+  let ctl=0, atl=0;
+  const rows=[];
+
+  days.forEach(date=>{
+    const daySess=byDate[date]||[];
+    const ce=daySess.reduce((s,x)=>s+computeCE(x.rpe,x.duration),0);
+    ctl=ctl*K_CTL+ce;
+    atl=atl*K_ATL+ce;
+    const tsb=ctl-atl;
+    rows.push({date,sessions:daySess,ce,ctl:Math.round(ctl*10)/10,atl:Math.round(atl*10)/10,tsb:Math.round(tsb*10)/10});
+  });
+
+  // Rolling Foster metrics
+  rows.forEach((row,i)=>{
+    const w7=rows.slice(Math.max(0,i-6),i+1).map(r=>r.ce);
+    const m7=w7.reduce((a,b)=>a+b,0)/w7.length;
+    const sd=Math.sqrt(w7.reduce((a,b)=>a+(b-m7)**2,0)/w7.length);
+    const mono=sd===0?0:m7/sd;
+    const strain=m7*7*(mono||0);
+    const sum7=w7.reduce((a,b)=>a+b,0);
+    const w28=rows.slice(Math.max(0,i-27),i+1).map(r=>r.ce);
+    const m28=w28.reduce((a,b)=>a+b,0)/w28.length;
+    const acwr=m28===0?0:m7/m28;
+    row.mean7=Math.round(m7*10)/10;
+    row.monotony=Math.round(mono*100)/100;
+    row.strain=Math.round(strain);
+    row.sum7=sum7;
+    row.acwr=Math.round(acwr*100)/100;
+    row.risk=computeRisk(acwr,mono,_thresholds,row.ce);
+  });
+
+  return rows;
+}
+
+// ===================== ADAPTIVE THRESHOLDS =====================
+// Apply cycle modifier to thresholds if athlete is female and currently in cycle
+function applyThresholdModifiers(thr, athId, dateStr){
+  if(isFemale&&isFemale(athId)&&isInCycle(athId,dateStr)){
+    return {
+      ...thr,
+      ceHi:  thr.ceHi  * 0.80,   // -20% charge max
+      ceMed: thr.ceMed * 0.80,   // -20% charge attention
+      acwrHi:thr.acwrHi* 0.93,   // ACWR plus sensible
+      tsbLow:thr.tsbLow * 0.85,  // moins de fatigue tolérée
+      inCycle: true,
+      levelLabel: thr.levelLabel + ' 🌸',
+    };
+  }
+  return {...thr, inCycle: false};
+}
+// Base seuils par niveau (CE journalier médian attendu)
+const LEVEL_PROFILES = {
+  beginner: {ceBase:250, acwrHi:1.35, acwrLo:0.75, monoHi:1.8,  label:'Débutant'},
+  club:     {ceBase:400, acwrHi:1.40, acwrLo:0.78, monoHi:1.85, label:'Club'},
+  regional: {ceBase:550, acwrHi:1.45, acwrLo:0.80, monoHi:1.90, label:'Régional'},
+  national: {ceBase:750, acwrHi:1.50, acwrLo:0.82, monoHi:2.00, label:'National'},
+  elite:    {ceBase:1000,acwrHi:1.55, acwrLo:0.85, monoHi:2.10, label:'Élite'},
+};
+
+// Compute personal adaptive thresholds from 8 weeks of history
+// Returns thresholds object {ceHi, ceMed, acwrHi, acwrLo, monoHi, monoMed, tsbLow, tsbVLow, source}
+function computeThresholds(athId){
+  const ath = DB.athletes.find(a=>a.id===athId);
+  const profile = LEVEL_PROFILES[ath?.level||'regional'];
+
+  const allSess = getSessions(athId);
+  const allM = computeMetrics(allSess);
+  const activeDays = allM.filter(r=>r.sessions.length>0);
+
+  // Need at least 4 weeks of data to use adaptive thresholds
+  if(activeDays.length < 20){
+    // Not enough history — use level profile only
+    return applyThresholdModifiers({
+      ceHi:   profile.ceBase * 1.6,
+      ceMed:  profile.ceBase * 1.0,
+      acwrHi: profile.acwrHi,
+      acwrLo: profile.acwrLo,
+      monoHi: profile.monoHi,
+      monoMed:profile.monoHi * 0.80,
+      tsbLow: -(profile.ceBase * 0.15),
+      tsbVLow:-(profile.ceBase * 0.28),
+      source: 'niveau',
+      sessionCount: activeDays.length,
+      levelLabel: profile.label,
+    }, athId, dateKey(new Date()));
+  }
+
+  // Use last 8 weeks (56 days) of data as personal baseline
+  const baseline = allM.slice(-56).filter(r=>r.sessions.length>0);
+  const ces   = baseline.map(r=>r.ce).sort((a,b)=>a-b);
+  const acwrs = baseline.map(r=>r.acwr).filter(v=>v>0).sort((a,b)=>a-b);
+  const monos = baseline.map(r=>r.monotony).sort((a,b)=>a-b);
+  const tsbs  = baseline.map(r=>r.tsb).sort((a,b)=>a-b);
+
+  const pct = (arr,p) => arr[Math.floor(arr.length*p/100)]||0;
+
+  // Personal thresholds: "warn" = above 80th pct, "bad" = above 93rd pct
+  // ACWR stays fixed (it's a ratio — personal history doesn't change safe range much)
+  // But we blend: 60% adaptive + 40% level profile for ACWR
+  const ceP80  = pct(ces, 80);
+  const ceP93  = pct(ces, 93);
+  const monoP80= pct(monos,80);
+  const monoP93= pct(monos,93);
+
+  // Blend adaptive CE thresholds with level baseline (prevent absurd values)
+  const ceHi  = Math.max(profile.ceBase*1.2, Math.min(ceP93,  profile.ceBase*3.0));
+  const ceMed = Math.max(profile.ceBase*0.8, Math.min(ceP80,  profile.ceBase*2.0));
+
+  // ACWR: fixed by level (ratio is universal)
+  const acwrHi = profile.acwrHi;
+  const acwrLo = profile.acwrLo;
+
+  // Monotony: blend
+  const monoHi  = Math.max(profile.monoHi*0.9, Math.min(monoP93, profile.monoHi*1.3));
+  const monoMed = Math.max(profile.monoHi*0.7, Math.min(monoP80, monoHi*0.85));
+
+  // TSB: personal low thresholds from history
+  const tsbLow  = Math.min(-5, pct(tsbs,15));
+  const tsbVLow = Math.min(-15, pct(tsbs,5));
+
+  return applyThresholdModifiers({
+    ceHi, ceMed, acwrHi, acwrLo, monoHi, monoMed, tsbLow, tsbVLow,
+    source: baseline.length >= 40 ? 'adaptif' : 'mixte',
+    sessionCount: activeDays.length,
+    levelLabel: profile.label,
+    ceP80, ceP93,
+  }, athId, dateKey(new Date()));
+}
+
+function computeRisk(acwr, mono, thresholds, ce){
+  // Nuanced risk: indicators must COMBINE to be dangerous, not trigger independently
+  // A high monotony at low load is just regularity, not danger
+  const t = thresholds || {acwrHi:1.5,acwrLo:0.8,monoHi:2.0,monoMed:1.5,ceHi:900,ceMed:400};
+  const ceVal = ce || 0;
+
+  // Score each indicator 0=ok / 1=warn / 2=bad
+  let acwrScore = 0, monoScore = 0;
+  if(acwr > t.acwrHi) acwrScore = 2;
+  else if(acwr > t.acwrHi * 0.87) acwrScore = 1;
+  else if(acwr < t.acwrLo && acwr > 0) acwrScore = 2;  // under-training
+  else if(acwr < t.acwrLo * 1.05 && acwr > 0) acwrScore = 1;
+
+  // Monotony score is WEIGHTED by load level — high mono at low CE = less worrying
+  const ceRatio = t.ceMed > 0 ? ceVal / t.ceMed : 1;  // 0 = no load, 1 = normal, >1 = high
+  const monoEffective = mono * Math.min(1, 0.4 + ceRatio * 0.6); // dampen at low load
+  if(monoEffective > t.monoHi) monoScore = 2;
+  else if(monoEffective > t.monoHi * 0.80) monoScore = 1;
+
+  const totalScore = acwrScore + monoScore;
+
+  // High only if ACWR is critical, OR ACWR warn + mono bad, OR both moderate
+  if(acwrScore === 2 && monoScore >= 1) return 'high';
+  if(acwrScore === 2 && ceVal > t.ceHi) return 'high';
+  if(acwrScore === 2) return 'medium';  // ACWR alone critical → medium not high
+  if(totalScore >= 3) return 'high';
+  if(totalScore >= 1) return 'medium';
+  return 'low';
+}
+function riskBadge(r){
+  if(r==='high')return'<span class="badge badge-high">Surveiller</span>';
+  if(r==='medium')return'<span class="badge badge-med">Attention</span>';
+  return'<span class="badge badge-low">OK</span>';
+}
+function riskClass(r){return r==='high'?'risk-high':r==='medium'?'risk-med':'risk-low';}
+
+// ===================== WEEKLY AGGREGATION =====================
+function getMonKey(dateStr){
+  const d=new Date(dateStr);const day=d.getDay();
+  const diff=d.getDate()-(day===0?6:day-1);
+  return dateKey(new Date(d.setDate(diff)));
+}
+function aggregateWeekly(allRows){
+  const wmap={};
+  allRows.forEach(row=>{
+    const wk=getMonKey(row.date);
+    if(!wmap[wk])wmap[wk]={wk,rows:[],rpeS:0,rpeN:0};
+    wmap[wk].rows.push(row);
+    row.sessions.forEach(s=>{wmap[wk].rpeS+=s.rpe;wmap[wk].rpeN++;});
+  });
+  return Object.values(wmap).sort((a,b)=>a.wk.localeCompare(b.wk)).map(w=>{
+    const last=w.rows[w.rows.length-1];
+    const first=w.rows[0];
+    const sRows=w.rows.filter(r=>r.sessions.length>0);
+    const ceT=w.rows.reduce((s,r)=>s+r.ce,0);
+    const endD=new Date(w.wk);endD.setDate(endD.getDate()+6);
+    return{
+      label:fmtShort(w.wk)+'–'+fmtShort(endD),
+      nbSessions:sRows.reduce((s,r)=>s+r.sessions.length,0),
+      ceTotal:ceT,ceMoy:Math.round(ceT/7*10)/10,
+      rpeMoy:w.rpeN?Math.round(w.rpeS/w.rpeN*10)/10:0,
+      monotony:last.monotony,strain:last.strain,acwr:last.acwr,
+      ctl:last.ctl,atl:last.atl,tsb:last.tsb,risk:last.risk
+    };
+  }).filter(w=>w.nbSessions>0);
+}
+
+// ===================== CHART HELPERS =====================
+const charts={};
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function baseOpts(){
+  return{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9,family:'DM Mono'}}},
+      y:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9,family:'DM Mono'}}}
+    }
+  };
+}
+function rpeColor(rpe){return rpe>=8?'var(--red)':rpe>=6?'var(--orange)':'var(--green)';}
+function acwrColor(acwr,thr){
+  const t=thr||{acwrHi:1.5,acwrLo:0.8};
+  if(acwr>t.acwrHi||acwr<t.acwrLo)return'var(--red)';
+  if(acwr>(t.acwrHi*0.87))return'var(--orange)';
+  return'var(--green)';
+}
+function ceColors(arr,weekly=false){const hi=weekly?5600:800,med=weekly?3500:500;return arr.map(v=>v>hi?'rgba(255,56,96,.75)':v>med?'rgba(255,159,28,.75)':'rgba(0,200,150,.75)');}
+
+// ===================== DASHBOARD =====================
+let dashPeriod=7;
+function setPeriod(d,btn){
+  dashPeriod=d;
+  document.querySelectorAll('#page-dashboard .period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');renderDashboard();
+}
+function renderDashboard(){
+  const athId=currentUser&&currentUser.role==='athlete'?currentUser.athleteId:DB.athletes[0]?.id;
+  const ath=DB.athletes.find(a=>a.id===athId);
+  document.getElementById('dashSub').textContent=ath?`Suivi de ${ath.name} — Méthode Foster + Banister`:'Aperçu Foster';
+
+  const thr=computeThresholds(athId);
+  const allM=computeMetrics(getSessions(athId),thr);
+  const recent=allM.slice(-dashPeriod);
+  const sessRows=allM.filter(r=>r.sessions.length>0);
+  const last=sessRows.slice(-1)[0];
+
+  // KPI cards
+  const kpiRow=document.getElementById('kpiRow');
+  if(last){
+    const cc=(v,hi,med)=>v>hi?'red':v>med?'orange':'green';
+    const ceC=last.ce>thr.ceHi?'red':last.ce>thr.ceMed?'orange':'green';
+    const monoC=last.monotony>thr.monoHi?'red':last.monotony>thr.monoMed?'orange':'green';
+    const acwrC=last.acwr>thr.acwrHi||last.acwr<thr.acwrLo?'red':last.acwr>(thr.acwrHi*0.87)?'orange':'green';
+    const formeC=last.tsb<thr.tsbVLow?'red':last.tsb<thr.tsbLow?'orange':'green';
+    kpiRow.innerHTML=`
+      <div class="kpi-card ${ceC}"><div class="kpi-label">CE du jour</div><div class="kpi-val" style="color:var(--${ceC==='green'?'green':ceC==='orange'?'orange':'red'})">${last.ce}</div><div class="kpi-sub">RPE × Durée</div></div>
+      <div class="kpi-card ${monoC}"><div class="kpi-label">Monotonie</div><div class="kpi-val" style="color:var(--${monoC==='green'?'green':monoC==='orange'?'orange':'red'})">${last.monotony}</div><div class="kpi-sub">Moy7 / Écart-type</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Contrainte</div><div class="kpi-val" style="color:var(--accent)">${last.strain}</div><div class="kpi-sub">Moy7×7×Mono</div></div>
+      <div class="kpi-card ${acwrC}"><div class="kpi-label">ACWR</div><div class="kpi-val" style="color:var(--${acwrC==='green'?'green':acwrC==='orange'?'orange':'red'})">${last.acwr}</div><div class="kpi-sub">Aigu / Chronique</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${last.ctl}</div><div class="kpi-sub">τ = 45 jours</div></div>
+      <div class="kpi-card ${formeC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val" style="color:var(--${formeC==='green'?'green':formeC==='orange'?'orange':'red'})">${last.tsb>0?'+':''}${last.tsb}</div><div class="kpi-sub">CTL − ATL</div></div>
+    `;
+  } else {
+    kpiRow.innerHTML='<div style="color:var(--text2);font-size:.8rem;grid-column:1/-1">Aucune donnée — saisissez des séances pour commencer</div>';
+  }
+
+  renderAlerts(last, document.getElementById('alertsContainer'), thr);
+
+  const labels=recent.map(r=>fmtShort(r.date));
+  const ces=recent.map(r=>r.ce);
+
+  // CE chart
+  dc('ceChart');
+  const o=baseOpts();
+  charts.ceChart=new Chart(document.getElementById('ceChart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'CE',data:ces,backgroundColor:ceColors(ces),borderRadius:4},
+      {label:'Moy 7j',type:'line',data:recent.map(r=>r.mean7),borderColor:'rgba(0,229,255,.7)',borderWidth:1.5,pointRadius:2,fill:false,tension:.4,borderDash:[4,3]}
+    ]},
+    options:{...o,plugins:{...o.plugins,legend:{display:true,labels:{color:'#7a8099',font:{size:10}}}}}
+  });
+
+  // Monotony
+  dc('monotonyChart');
+  charts.monotonyChart=new Chart(document.getElementById('monotonyChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Monotonie',data:recent.map(r=>r.monotony),borderColor:'#ff9f1c',backgroundColor:'rgba(255,159,28,.12)',fill:true,tension:.4,pointRadius:3,yAxisID:'y'},
+      {label:'Contrainte',data:recent.map(r=>r.strain),borderColor:'#ff3860',fill:false,tension:.4,pointRadius:2,borderDash:[4,3],yAxisID:'y1'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:'#7a8099',font:{size:9,family:'DM Mono'}}}},
+      scales:{
+        x:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9,family:'DM Mono'}}},
+        y:{
+          position:'left',
+          grid:{color:'rgba(30,37,53,.8)'},
+          ticks:{color:'#ff9f1c',font:{size:9,family:'DM Mono'}},
+          title:{display:true,text:'Monotonie',color:'#ff9f1c',font:{size:8}},
+          suggestedMin:0, suggestedMax:3
+        },
+        y1:{
+          position:'right',
+          grid:{display:false},
+          ticks:{color:'#ff3860',font:{size:9,family:'DM Mono'}},
+          title:{display:true,text:'Contrainte',color:'#ff3860',font:{size:8}}
+        }
+      }
+    }
+  });
+
+  // ACWR
+  dc('acwrChart');
+  charts.acwrChart=new Chart(document.getElementById('acwrChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[{label:'ACWR',data:recent.map(r=>r.acwr),borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,.08)',fill:true,tension:.4,
+      pointBackgroundColor:recent.map(r=>r.acwr>1.5||r.acwr<0.8?'#ff3860':r.acwr>1.3?'#ff9f1c':'#00c896'),pointRadius:3}]},
+    options:{...baseOpts(),scales:{...baseOpts().scales,y:{...baseOpts().scales.y,suggestedMin:0,suggestedMax:2}}}
+  });
+
+  // Fitness
+  dc('dashFitnessChart');
+  charts.dashFitnessChart=new Chart(document.getElementById('dashFitnessChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Fitness',data:recent.map(r=>r.ctl),borderColor:'#00c896',fill:false,tension:.4,pointRadius:2,borderWidth:2},
+      {label:'Fatigue',data:recent.map(r=>r.atl),borderColor:'#ff3860',fill:false,tension:.4,pointRadius:2,borderDash:[4,3]},
+      {label:'Forme',data:recent.map(r=>r.tsb),borderColor:'#a855f7',fill:false,tension:.4,pointRadius:3,borderWidth:2}
+    ]},
+    options:{...baseOpts(),plugins:{legend:{display:true,labels:{color:'#7a8099',font:{size:9}}}}}
+  });
+
+  // History table
+  const trows=[];
+  sessRows.slice(-dashPeriod).forEach(r=>r.sessions.forEach(s=>trows.push({...s,...r,sCE:computeCE(s.rpe,s.duration)})));
+  document.getElementById('historyBody').innerHTML=trows.reverse().map(r=>`
+    <tr>
+      <td>${fmtDate(r.date)}</td>
+      <td><span class="session-tag ${r.type}" style="font-size:.6rem;padding:2px 7px">${r.type}</span></td>
+      <td style="color:${rpeColor(r.rpe)};font-weight:600">${r.rpe}/10</td>
+      <td>${r.duration}min</td>
+      <td>${r.sCE}</td>
+      <td>${r.monotony}</td>
+      <td>${r.strain}</td>
+      <td style="color:${acwrColor(r.acwr,thr)};font-weight:600">${r.acwr}</td>
+      <td style="color:#a855f7">${r.ctl}</td>
+      <td style="color:#ff9f9f">${r.atl}</td>
+      <td class="${r.tsb>=0?'risk-low':r.tsb>-30?'risk-med':'risk-high'}">${r.tsb>0?'+':''}${r.tsb}</td>
+      <td>${riskBadge(r.risk)}</td>
+    </tr>
+  `).join('')||'<tr><td colspan="12" style="text-align:center;color:var(--text2);padding:28px">Aucune donnée</td></tr>';
+}
+
+function renderAlerts(last,container,thr){
+  if(!last){container.innerHTML='';return;}
+
+  // Evaluate each indicator independently
+  const indicators = [];
+
+  const t = thr || {acwrHi:1.5,acwrLo:0.8,acwrWarn:1.3,monoHi:2.0,monoMed:1.5,ceHi:900,ceMed:600,tsbVLow:-60,tsbLow:-20};
+  const cycleBanner = thr&&thr.inCycle ? '<div style="margin-bottom:10px;padding:8px 14px;background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.25);border-radius:8px;font-size:.72rem;color:#f472b6">🌸 Période menstruelle — seuils de charge réduits de 20%. Privilégier récupération et intensité modérée.</div>' : '';
+
+  // Source badge info
+  const srcBadge = thr ? `<span style="font-size:.6rem;color:var(--text2);margin-left:6px;opacity:.7">[seuils ${thr.source} · ${thr.levelLabel} · ${thr.sessionCount} séances]</span>` : '';
+
+  // ACWR
+  if(last.acwr>t.acwrHi)       indicators.push({key:'ACWR',level:'bad', label:'ACWR critique ('+last.acwr+')',  note:'Risque de blessure élevé'});
+  else if(last.acwr>(t.acwrHi*0.87)) indicators.push({key:'ACWR',level:'warn',label:'ACWR élevé ('+last.acwr+')', note:'Charge aiguë importante'});
+  else if(last.acwr<t.acwrLo&&last.acwr>0) indicators.push({key:'ACWR',level:'warn',label:'ACWR bas ('+last.acwr+')', note:'Sous-charge chronique'});
+  else                          indicators.push({key:'ACWR',level:'ok',  label:'ACWR normal ('+last.acwr+')',   note:'Zone optimale'});
+
+  // Monotony
+  if(last.monotony>t.monoHi)   indicators.push({key:'Monotonie',level:'bad', label:'Monotonie critique ('+last.monotony+')', note:'Entraînements trop répétitifs'});
+  else if(last.monotony>t.monoMed) indicators.push({key:'Monotonie',level:'warn',label:'Monotonie élevée ('+last.monotony+')', note:'Varier les charges'});
+  else                          indicators.push({key:'Monotonie',level:'ok',  label:'Monotonie OK ('+last.monotony+')',      note:'Bonne variation'});
+
+  // TSB / Forme
+  if(last.tsb<t.tsbVLow)       indicators.push({key:'Forme',level:'bad', label:'Forme très basse (TSB '+last.tsb+')', note:'Fatigue accumulée'});
+  else if(last.tsb<t.tsbLow)   indicators.push({key:'Forme',level:'warn',label:'Forme négative (TSB '+last.tsb+')',   note:'Fatigue > Fitness'});
+  else if(last.tsb>Math.abs(t.tsbVLow)) indicators.push({key:'Forme',level:'ok', label:'Forme excellente (TSB +'+last.tsb+')',note:'Athlète frais'});
+  else                          indicators.push({key:'Forme',level:'ok',  label:'Forme correcte (TSB '+last.tsb+')',  note:'Équilibre Fitness/Fatigue'});
+
+  // CE
+  if(last.ce>t.ceHi)           indicators.push({key:'CE',level:'bad', label:'CE très élevé ('+last.ce+')', note:'Charge journalière excessive'});
+  else if(last.ce>t.ceMed)     indicators.push({key:'CE',level:'warn',label:'CE élevé ('+last.ce+')',      note:'Charge soutenue'});
+  else if(last.ce>0)           indicators.push({key:'CE',level:'ok',  label:'CE normal ('+last.ce+')',     note:'Charge maîtrisée'});
+
+  // Global severity = worst indicator
+  const hasBad  = indicators.some(i=>i.level==='bad');
+  const hasWarn = indicators.some(i=>i.level==='warn');
+  const globalLevel = hasBad?'bad':hasWarn?'warn':'ok';
+
+  // Build a coherent single verdict
+  let icon, verdict, detail;
+  const badOnes  = indicators.filter(i=>i.level==='bad').map(i=>i.key);
+  const warnOnes = indicators.filter(i=>i.level==='warn').map(i=>i.key);
+
+  if(globalLevel==='bad'){
+    icon='🚨';
+    verdict='Charge à risque — intervention requise';
+    detail='Points critiques : '+badOnes.join(', ')+'. '
+          +(warnOnes.length?'Points à surveiller : '+warnOnes.join(', ')+'. ':'')
+          +'Réduire la charge et prévoir une récupération active.';
+  } else if(globalLevel==='warn'){
+    icon='⚡';
+    verdict='Charge élevée — à surveiller';
+    detail='Points à surveiller : '+warnOnes.join(', ')+'. '
+          +'Maintenir la vigilance sur les prochains jours et adapter si nécessaire.';
+  } else {
+    icon='✅';
+    verdict='Charge bien gérée — dans les normes';
+    detail='Tous les indicateurs sont dans les zones optimales. Continuer sur cette lancée.';
+  }
+
+  // Pills
+  const pills = indicators.filter(i=>i.key!=='CE'||last.ce>0).map(i=>
+    `<span class="pill ${i.level==='bad'?'bad':i.level==='warn'?'warn':'ok'}">${i.key}: ${i.label.split('(')[1]?.replace(')','') || i.label}</span>`
+  ).join('');
+
+  const color = globalLevel==='bad'?'red':globalLevel==='warn'?'orange':'green';
+  const verdictColor = globalLevel==='bad'?'var(--red)':globalLevel==='warn'?'var(--orange)':'var(--green)';
+
+  container.innerHTML=cycleBanner+`
+    <div class="summary-banner ${color}">
+      <div class="summary-icon">${icon}</div>
+      <div>
+        <div class="summary-verdict" style="color:${verdictColor}">${verdict}${srcBadge}</div>
+        <div class="summary-detail">${detail}</div>
+        <div class="summary-pills">${pills}</div>
+      </div>
+    </div>`;
+}
+
+// ===================== CALENDAR =====================
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
+let selectedDate=dateKey(new Date());
+function renderCalendar(){
+  const months=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('calMonthLabel').textContent=months[calMonth]+' '+calYear;
+  const dh=['L','M','M','J','V','S','D'];
+  const first=new Date(calYear,calMonth,1);
+  let sd=first.getDay()-1;if(sd<0)sd=6;
+  const dim=new Date(calYear,calMonth+1,0).getDate();
+  const today=dateKey(new Date());
+  const athId=getAthId();
+  const smap={};DB.sessions.filter(s=>s.athleteId===athId).forEach(s=>smap[s.date]=true);
+  let html=dh.map(d=>`<div class="cal-day-header">${d}</div>`).join('');
+  for(let i=0;i<sd;i++)html+='<div class="cal-day other-month"></div>';
+  for(let d=1;d<=dim;d++){
+    const k=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const athId=getAthId();
+    const inCyc=isFemale(athId)&&isInCycle(athId,k);
+    const isStart=inCyc&&DB.athletes.find(a=>a.id===athId)?.cycles?.some(c=>c.start===k);
+    const cls=['cal-day',k===today?'today':'',k===selectedDate?'selected':'',smap[k]?'has-data':'',inCyc?(isStart?'cycle-start':'cycle'):''].filter(Boolean).join(' ');
+    html+=`<div class="${cls}" onclick="selectDate('${k}')">${d}${inCyc?'<span style="font-size:.45rem;display:block;line-height:1;margin-top:-1px">🌸</span>':''}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML=html;
+  document.getElementById('selectedDateLabel').textContent=fmtDate(selectedDate);
+}
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();}
+function selectDate(d){selectedDate=d;renderCalendar();renderDaySessionsList();renderDayKpis();}
+function renderDaySessionsList(){
+  const athId=getAthId();
+  const ds=DB.sessions.filter(s=>s.athleteId===athId&&s.date===selectedDate);
+  const list=document.getElementById('daySessionsList');
+  if(!ds.length){list.innerHTML='<div class="empty-state" style="padding:14px"><p>Aucune séance ce jour</p></div>';return;}
+  list.innerHTML=`<div class="sessions-list">${ds.map(s=>`
+    <div class="session-item">
+      <span class="session-tag ${s.type}">${s.type}</span>
+      <div class="session-info"><strong>RPE ${s.rpe}/10</strong><span>${s.duration}min — CE: ${computeCE(s.rpe,s.duration)}</span>${s.notes?`<div style="font-size:.68rem;color:var(--text2);margin-top:2px">${s.notes}</div>`:''}</div>
+      <button class="btn btn-danger" onclick="deleteSession('${s.id}')">✕</button>
+    </div>`).join('')}</div>`;
+}
+function renderDayKpis(){
+  const athId=getAthId();
+  const allM=computeMetrics(getSessions(athId));
+  const day=allM.find(r=>r.date===selectedDate);
+  const row=document.getElementById('dayKpiRow');
+  if(!day||!day.sessions.length){
+    const cycMsg=isFemale(athId)&&isInCycle(athId,selectedDate)?'<div class="cycle-badge" style="margin-top:6px">🌸 Période menstruelle — seuils adaptés</div>':'';
+    row.innerHTML='<div style="color:var(--text2);font-size:.78rem">Aucune séance ce jour'+cycMsg+'</div>';return;
+  }
+  row.innerHTML=`
+    <div class="kpi-card blue"><div class="kpi-label">CE total</div><div class="kpi-val" style="color:var(--accent)">${day.ce}</div><div class="kpi-sub">${day.sessions.length} séance(s)</div></div>
+    <div class="kpi-card ${day.monotony>2?'red':day.monotony>1.5?'orange':'green'}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${day.monotony}</div></div>
+    <div class="kpi-card ${day.acwr>1.5||day.acwr<0.8?'red':day.acwr>1.3?'orange':'green'}"><div class="kpi-label">ACWR</div><div class="kpi-val">${day.acwr}</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${day.ctl}</div></div>
+    <div class="kpi-card ${day.tsb<-60?'red':day.tsb<-10?'orange':'green'}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${day.tsb>0?'+':''}${day.tsb}</div></div>
+  `;
+  if(isFemale(athId)&&isInCycle(athId,selectedDate)){
+    row.insertAdjacentHTML('afterend','<div style="margin-top:8px;padding:8px 12px;background:rgba(236,72,153,.07);border:1px solid rgba(236,72,153,.25);border-radius:8px;font-size:.7rem;color:#f472b6">🌸 Période menstruelle active — seuils de charge réduits de 20%, récupération prioritaire.</div>');
+  }
+}
+function renderEntry(){
+  if(currentUser&&currentUser.role==='coach')document.getElementById('athleteSelectorEntry').style.display='block';
+  renderCalendar();renderDaySessionsList();renderDayKpis();updateCycleBtnVisibility();
+}
+function onEntryAthleteChange(){renderCalendar();renderDaySessionsList();renderDayKpis();updateCycleBtnVisibility();}
+function updateCycleBtnVisibility(){
+  const athId=getAthId();
+  const btn=document.getElementById('cycleEntryBtn');
+  if(btn)btn.style.display=isFemale(athId)?'block':'none';
+}
+
+// ===================== RPE =====================
+let selectedRpe=null;
+const rpeColors=['#4a9eff','#3dc4ff','#00e5ff','#a3e635','#84cc16','#fbbf24','#f97316','#ef4444','#dc2626','#b91c1c','#7f1d1d'];
+const rpeDescs=['Repos complet','Très léger — à peine perceptible','Léger — facile','Modéré — confortable','Un peu difficile','Difficile — effort soutenu','Difficile+ — conversation difficile','Très difficile','Très difficile+','Proche du maximum','Maximum absolu'];
+function buildRpeScale(){
+  document.getElementById('rpeScale').innerHTML=Array.from({length:11},(_,i)=>
+    `<button class="rpe-btn" id="rpe${i}" style="background:${rpeColors[i]}20;color:${rpeColors[i]};border:1px solid ${rpeColors[i]}40" onclick="selectRpe(${i})">${i}</button>`
+  ).join('');
+}
+function selectRpe(v){
+  selectedRpe=v;
+  document.querySelectorAll('.rpe-btn').forEach((b,i)=>{b.style.background=rpeColors[i]+'20';b.classList.remove('selected');});
+  const btn=document.getElementById('rpe'+v);btn.style.background=rpeColors[v];btn.classList.add('selected');
+  document.getElementById('rpeDesc').textContent=rpeDescs[v];
+  document.getElementById('rpeDesc').style.color=rpeColors[v];
+}
+
+// ===================== SESSION MODAL =====================
+function openAddSession(){
+  selectedRpe=null;
+  ['sessDuration','sessNotes'].forEach(id=>document.getElementById(id).value='');
+  buildRpeScale();
+  document.getElementById('rpeDesc').textContent='Sélectionnez un RPE';
+  document.getElementById('rpeDesc').style.color='var(--text2)';
+  document.getElementById('sessionModal').classList.add('open');
+}
+async function saveSession(){
+  if(selectedRpe===null){toast('Sélectionnez un RPE','error');return;}
+  const dur=parseInt(document.getElementById('sessDuration').value);
+  if(!dur||dur<1){toast('Durée invalide','error');return;}
+  const athId=currentUser&&currentUser.role==='athlete'?currentUser.athleteId:(document.getElementById('entryAthleteSelect').value||DB.athletes[0]?.id);
+  if(!athId){toast('Aucun athlète sélectionné','error');return;}
+  const sess={id:'s'+Date.now(),athleteId:athId,date:selectedDate,type:document.getElementById('sessType').value,rpe:selectedRpe,duration:dur,notes:document.getElementById('sessNotes').value};
+  DB.sessions.push(sess);
+  closeModal('sessionModal');renderCalendar();renderDaySessionsList();renderDayKpis();
+  toast('Séance enregistrée !','success');
+  await saveSessionDB(sess);
+}
+async function deleteSession(id){
+  DB.sessions=DB.sessions.filter(s=>s.id!==id);
+  renderCalendar();renderDaySessionsList();renderDayKpis();toast('Séance supprimée','success');
+  await deleteSessionDB(id);
+}
+
+// ===================== SUIVI =====================
+let suiviPeriod=14, suiviView='daily';
+function setSuiviView(v,btn){
+  suiviView=v;
+  document.getElementById('viewDailyBtn').classList.toggle('active',v==='daily');
+  document.getElementById('viewWeeklyBtn').classList.toggle('active',v==='weekly');
+  renderSuivi();
+}
+function setSuiviPeriod(d,btn){
+  suiviPeriod=d;
+  document.querySelectorAll('#suiviPeriodBtns .period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');renderSuivi();
+}
+function renderSuivi(){
+  if(currentUser&&currentUser.role==='coach')document.getElementById('suiviAthSelector').style.display='flex';
+  const athId=currentUser&&currentUser.role==='athlete'?currentUser.athleteId:(document.getElementById('suiviAthleteSelect').value||DB.athletes[0]?.id);
+  const thrS=computeThresholds(athId);
+  const allM=computeMetrics(getSessions(athId),thrS);
+  const recent=allM.slice(-suiviPeriod);
+  const sessRows=recent.filter(r=>r.sessions.length>0);
+  const weeks=aggregateWeekly(allM).filter(w=>{
+    // Filter weeks that fall within the period
+    const cutD=new Date();cutD.setDate(cutD.getDate()-suiviPeriod);
+    return new Date(w.label.split('–')[0].split('/').reverse().join('-'))>=cutD||true;
+  }).slice(-Math.ceil(suiviPeriod/7));
+
+  document.getElementById('suiviCeTitle').textContent=suiviView==='weekly'?'CE Total — Vue hebdomadaire':'CE — Vue quotidienne';
+  document.getElementById('ceZoneLegend').innerHTML=suiviView==='weekly'
+    ?'<span style="color:var(--green)">●</span> Optimal &lt;3 500 &nbsp; <span style="color:var(--orange)">●</span> Attention 3 500–5 600 &nbsp; <span style="color:var(--red)">●</span> Surcharge &gt;5 600 &nbsp;<span style="color:var(--text2);font-size:.62rem">(seuils ×7 vs quotidien)</span>'
+    :'<span style="color:var(--green)">●</span> Optimal &lt;500 &nbsp; <span style="color:var(--orange)">●</span> Attention 500–800 &nbsp; <span style="color:var(--red)">●</span> Surcharge &gt;800';
+  document.getElementById('weeklyKpiCards').style.display=suiviView==='weekly'?'block':'none';
+  document.getElementById('tblDaily').style.display=suiviView==='daily'?'block':'none';
+  document.getElementById('tblWeekly').style.display=suiviView==='weekly'?'block':'none';
+
+  let labels, ceD, mono, strain, acwr, ctlD, atlD, tsbD;
+
+  if(suiviView==='weekly'){
+    labels=weeks.map(w=>w.label);
+    ceD=weeks.map(w=>w.ceTotal);
+    mono=weeks.map(w=>w.monotony);
+    strain=weeks.map(w=>w.strain);
+    acwr=weeks.map(w=>w.acwr);
+    ctlD=weeks.map(w=>w.ctl);
+    atlD=weeks.map(w=>w.atl);
+    tsbD=weeks.map(w=>w.tsb);
+
+    const lastW=weeks[weeks.length-1];
+    if(lastW){
+      document.getElementById('weeklyKpiRow').innerHTML=`
+        <div class="kpi-card blue"><div class="kpi-label">CE Semaine</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceTotal}</div><div class="kpi-sub">${lastW.nbSessions} séances</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">CE moy/jour</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceMoy}</div></div>
+        <div class="kpi-card ${lastW.monotony>2?'red':lastW.monotony>1.5?'orange':'green'}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${lastW.monotony}</div></div>
+        <div class="kpi-card ${lastW.acwr>1.5||lastW.acwr<0.8?'red':lastW.acwr>1.3?'orange':'green'}"><div class="kpi-label">ACWR</div><div class="kpi-val">${lastW.acwr}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${lastW.ctl}</div></div>
+        <div class="kpi-card ${lastW.tsb<-60?'red':lastW.tsb<-10?'orange':'green'}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${lastW.tsb>0?'+':''}${lastW.tsb}</div></div>
+      `;
+    }
+  } else {
+    labels=sessRows.map(r=>fmtShort(r.date));
+    ceD=sessRows.map(r=>r.ce);
+    mono=sessRows.map(r=>r.monotony);
+    strain=sessRows.map(r=>r.strain);
+    acwr=sessRows.map(r=>r.acwr);
+    ctlD=sessRows.map(r=>r.ctl);
+    atlD=sessRows.map(r=>r.atl);
+    tsbD=sessRows.map(r=>r.tsb);
+  }
+
+  if(!labels.length){
+    ['suiviCeChart','suiviFitnessChart','suiviMonotonyChart','suiviStrainChart','suiviAcwrChart'].forEach(dc);
+    document.getElementById('suiviBody').innerHTML='<tr><td colspan="13" style="text-align:center;color:var(--text2);padding:28px">Aucune donnée</td></tr>';
+    document.getElementById('suiviWeeklyBody').innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--text2);padding:28px">Aucune donnée</td></tr>';
+    return;
+  }
+
+  // CE chart with zone backgrounds
+  dc('suiviCeChart');
+  charts.suiviCeChart=new Chart(document.getElementById('suiviCeChart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'CE',data:ceD,backgroundColor:ceColors(ceD,suiviView==='weekly'),borderRadius:4}]},
+    options:{...baseOpts(),plugins:{legend:{display:false}},scales:{
+      x:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9}}},
+      y:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9}},min:0}
+    }}
+  });
+
+  // Fitness chart
+  dc('suiviFitnessChart');
+  charts.suiviFitnessChart=new Chart(document.getElementById('suiviFitnessChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Fitness (CTL)',data:ctlD,borderColor:'#00c896',backgroundColor:'rgba(0,200,150,.07)',fill:true,tension:.4,pointRadius:3,borderWidth:2},
+      {label:'Fatigue (ATL)',data:atlD,borderColor:'#ff3860',fill:false,tension:.4,pointRadius:2,borderWidth:2,borderDash:[5,3]},
+      {label:'Forme (TSB)',data:tsbD,borderColor:'#a855f7',fill:false,tension:.4,pointRadius:3,borderWidth:2,
+        pointBackgroundColor:tsbD.map(v=>v>0?'#00c896':v>-30?'#ff9f1c':'#ff3860')}
+    ]},
+    options:{...baseOpts(),plugins:{legend:{display:true,labels:{color:'#7a8099',font:{size:10,family:'DM Mono'}}}}}
+  });
+
+  // Monotony
+  dc('suiviMonotonyChart');
+  charts.suiviMonotonyChart=new Chart(document.getElementById('suiviMonotonyChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Monotonie',data:mono,borderColor:'#ff9f1c',backgroundColor:'rgba(255,159,28,.1)',fill:true,tension:.4,pointRadius:3,
+      pointBackgroundColor:mono.map(v=>v>2?'#ff3860':v>1.5?'#ff9f1c':'#00c896')}]},
+    options:baseOpts()
+  });
+
+  // Strain
+  dc('suiviStrainChart');
+  charts.suiviStrainChart=new Chart(document.getElementById('suiviStrainChart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Contrainte',data:strain,backgroundColor:strain.map(v=>v>5000?'rgba(255,56,96,.75)':v>3000?'rgba(255,159,28,.75)':'rgba(0,229,255,.65)'),borderRadius:4}]},
+    options:baseOpts()
+  });
+
+  // ACWR
+  dc('suiviAcwrChart');
+  charts.suiviAcwrChart=new Chart(document.getElementById('suiviAcwrChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[{label:'ACWR',data:acwr,borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,.08)',fill:true,tension:.4,pointRadius:3,
+      pointBackgroundColor:acwr.map(v=>v>1.5||v<0.8?'#ff3860':v>1.3?'#ff9f1c':'#00c896')}]},
+    options:{...baseOpts(),scales:{...baseOpts().scales,y:{...baseOpts().scales.y,suggestedMin:0,suggestedMax:2}}}
+  });
+
+  // Daily table
+  if(suiviView==='daily'){
+    const trows=[];sessRows.forEach(r=>r.sessions.forEach(s=>trows.push({...s,...r,sCE:computeCE(s.rpe,s.duration)})));
+    document.getElementById('suiviBody').innerHTML=trows.reverse().map(r=>`
+      <tr>
+        <td>${fmtDate(r.date)}</td>
+        <td><span class="session-tag ${r.type}" style="font-size:.6rem;padding:2px 7px">${r.type}</span></td>
+        <td style="color:${rpeColor(r.rpe)};font-weight:600">${r.rpe}/10</td>
+        <td>${r.duration}min</td>
+        <td style="font-weight:600">${r.sCE}</td>
+        <td>${r.sum7}</td>
+        <td>${r.monotony}</td>
+        <td>${r.strain}</td>
+        <td style="color:${acwrColor(r.acwr,thrS)};font-weight:600">${r.acwr}</td>
+        <td style="color:#a855f7">${r.ctl}</td><td style="color:#ff9f9f">${r.atl}</td>
+        <td class="${r.tsb>=0?'risk-low':r.tsb>-30?'risk-med':'risk-high'}">${r.tsb>0?'+':''}${r.tsb}</td>
+        <td>${riskBadge(r.risk)}</td>
+      </tr>
+    `).join('')||'<tr><td colspan="13" style="text-align:center;color:var(--text2);padding:28px">Aucune donnée</td></tr>';
+  }
+
+  // Weekly table
+  if(suiviView==='weekly'){
+    document.getElementById('suiviWeeklyBody').innerHTML=weeks.slice().reverse().map(w=>`
+      <tr>
+        <td style="font-weight:600;white-space:nowrap">${w.label}</td>
+        <td>${w.nbSessions}</td>
+        <td style="font-weight:600">${w.ceTotal}</td>
+        <td>${w.ceMoy}</td>
+        <td style="color:${rpeColor(w.rpeMoy)};font-weight:600">${w.rpeMoy}/10</td>
+        <td>${w.monotony}</td>
+        <td>${w.strain}</td>
+        <td style="color:${acwrColor(w.acwr,thrS)};font-weight:600">${w.acwr}</td>
+        <td style="color:#a855f7">${w.ctl}</td>
+        <td style="color:#ff9f9f">${w.atl}</td>
+        <td class="${w.tsb>=0?'risk-low':w.tsb>-30?'risk-med':'risk-high'}">${w.tsb>0?'+':''}${w.tsb}</td>
+        <td>${riskBadge(w.risk)}</td>
+      </tr>
+    `).join('')||'<tr><td colspan="12" style="text-align:center;color:var(--text2);padding:28px">Aucune donnée</td></tr>';
+  }
+}
+
+// ===================== COACH =====================
+let selectedCoachAth=null;
+function renderCoach(){
+  // Coach always accessible in this mode
+  document.getElementById('athleteGrid').innerHTML=DB.athletes.map(a=>{
+    const url=window.location.href.split('?')[0].split('#')[0]+'#athlete='+a.id;
+    return `<div class="athlete-card ${selectedCoachAth===a.id?'selected-ath':''}" onclick="selectCoachAthlete('${a.id}')">
+      <div class="athlete-avatar">${a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}</div>
+      <div class="athlete-name">${a.name}</div>
+      <div class="athlete-sport">${a.sport}</div>
+      <div style="margin-top:5px;font-size:.65rem;color:var(--text2)">${{beginner:'🟢 Débutant',club:'🔵 Club',regional:'🟡 Régional',national:'🟠 National',elite:'🔴 Élite'}[a.level||'regional']||'🟡 Régional'} · ${DB.sessions.filter(s=>s.athleteId===a.id).length} séance(s)</div>
+      <button onclick="event.stopPropagation();copyLink('${a.id}')" style="margin-top:10px;width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'" id="linkbtn-${a.id}">🔗 Copier le lien athlète</button>
+    </div>`;
+  }).join('')||'<div style="color:var(--text2)">Aucun athlète</div>';
+  if(selectedCoachAth)renderCoachDetail();
+}
+function selectCoachAthlete(id){selectedCoachAth=id;document.getElementById('coachAthleteDetail').style.display='block';renderCoach();}
+function renderCoachDetail(){
+  const ath=DB.athletes.find(a=>a.id===selectedCoachAth);if(!ath)return;
+  document.getElementById('coachAthName').textContent=ath.name;
+  // Show meta info
+  const meta=[];
+  if(ath.sex==='F')meta.push('Femme');else if(ath.sex==='M')meta.push('Homme');
+  if(ath.age)meta.push(ath.age+' ans');
+  if(ath.weight&&ath.height)meta.push(ath.weight+'kg · '+ath.height+'cm');
+  if(ath.rankingFR)meta.push('FFT: '+ath.rankingFR);
+  const lvLabels={beginner:'🟢 Débutant',club:'🔵 Club',regional:'🟡 Régional',national:'🟠 National',elite:'🔴 Élite'};
+  meta.push(lvLabels[ath.level||'regional']);
+  document.getElementById('coachAthMeta').textContent=meta.join(' · ');
+  // Show cycle button only for female athletes
+  const cycleBtn=document.getElementById('coachCycleBtn');
+  if(cycleBtn)cycleBtn.style.display=ath.sex==='F'?'inline-flex':'none';
+  const allM=computeMetrics(getSessions(selectedCoachAth));
+  const recent14=allM.slice(-14);
+  const last=allM.filter(r=>r.sessions.length>0).slice(-1)[0];
+  const kR=document.getElementById('coachKpiRow');
+  const thrC=computeThresholds(selectedCoachAth);
+  const allMC=computeMetrics(getSessions(selectedCoachAth),thrC);
+  const lastC=allMC.filter(r=>r.sessions.length>0).slice(-1)[0]||last;
+  const lc=lastC||last;
+  if(lc){
+    const ceCC=lc.ce>thrC.ceHi?'red':lc.ce>thrC.ceMed?'orange':'green';
+    const moCC=lc.monotony>thrC.monoHi?'red':lc.monotony>thrC.monoMed?'orange':'green';
+    const acCC=lc.acwr>thrC.acwrHi||lc.acwr<thrC.acwrLo?'red':lc.acwr>(thrC.acwrHi*.87)?'orange':'green';
+    const tsbCC=lc.tsb<thrC.tsbVLow?'red':lc.tsb<thrC.tsbLow?'orange':'green';
+    kR.innerHTML=`
+      <div class="kpi-card ${ceCC}"><div class="kpi-label">CE dernier</div><div class="kpi-val" style="color:var(--${ceCC==='green'?'green':ceCC==='orange'?'orange':'red'})">${lc.ce}</div><div class="kpi-sub">seuil warn: ${Math.round(thrC.ceMed)}</div></div>
+      <div class="kpi-card ${moCC}"><div class="kpi-label">Monotonie</div><div class="kpi-val" style="color:var(--${moCC==='green'?'green':moCC==='orange'?'orange':'red'})">${lc.monotony}</div><div class="kpi-sub">seuil: ${thrC.monoHi.toFixed(2)}</div></div>
+      <div class="kpi-card ${acCC}"><div class="kpi-label">ACWR</div><div class="kpi-val" style="color:var(--${acCC==='green'?'green':acCC==='orange'?'orange':'red'})">${lc.acwr}</div><div class="kpi-sub">max: ${thrC.acwrHi}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${lc.ctl}</div></div>
+      <div class="kpi-card ${tsbCC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val" style="color:var(--${tsbCC==='green'?'green':tsbCC==='orange'?'orange':'red'})">${lc.tsb>0?'+':''}${lc.tsb}</div></div>
+      <div class="kpi-card ${lc.risk==='high'?'red':lc.risk==='medium'?'orange':'green'}"><div class="kpi-label">Risque <span style="font-size:.55rem;opacity:.6">${thrC.source}</span></div><div class="kpi-val" style="font-size:.95rem;padding-top:5px">${riskBadge(lc.risk)}</div></div>
+    `;
+  } else kR.innerHTML='<div style="color:var(--text2);font-size:.78rem">Aucune donnée</div>';
+  dc('coachChart');
+  const sR=recent14.filter(r=>r.sessions.length>0);
+  if(sR.length){
+    charts.coachChart=new Chart(document.getElementById('coachChart').getContext('2d'),{
+      type:'bar',
+      data:{labels:sR.map(r=>fmtShort(r.date)),datasets:[
+        {label:'CE',data:sR.map(r=>r.ce),backgroundColor:ceColors(sR.map(r=>r.ce)),borderRadius:4,yAxisID:'y'},
+        {label:'Fitness',type:'line',data:sR.map(r=>r.ctl),borderColor:'#a855f7',fill:false,tension:.4,pointRadius:3,yAxisID:'y1'}
+      ]},
+      options:{...baseOpts(),plugins:{legend:{display:true,labels:{color:'#7a8099',font:{size:9}}}},
+        scales:{
+          x:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9}}},
+          y:{grid:{color:'rgba(30,37,53,.8)'},ticks:{color:'#7a8099',font:{size:9}},position:'left'},
+          y1:{grid:{display:false},ticks:{color:'#a855f7',font:{size:9}},position:'right'}
+        }}
+    });
+  }
+}
+
+// ===================== ATHLETE MODAL =====================
+// openAddAthlete now defined in saveAthlete section
+function updateLevelFromRanking(val){
+  const map = {
+    '4e série':'beginner',
+    '30':'club','15/5':'club','15/4':'club','15/3':'club','15/2':'club','15/1':'club',
+    '15':'regional','5/6':'regional','4/6':'regional','3/6':'regional',
+    '2/6':'national','1/6':'national','0':'national',
+    '-2/6':'elite','-4/6':'elite','-15':'elite','N°FR':'elite'
+  };
+  const lv = map[val]||'regional';
+  const hidden = document.getElementById('newAthLevel');
+  if(hidden) hidden.value = lv;
+}
+function switchAthTab(tab, el){
+  document.querySelectorAll('#athleteModal .modal-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#athleteModal .modal-tab-panel').forEach(p=>p.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('athTab-'+tab).classList.add('active');
+}
+function updateIMC(){
+  const w=parseFloat(document.getElementById('newAthWeight').value);
+  const h=parseFloat(document.getElementById('newAthHeight').value)/100;
+  const el=document.getElementById('imc-display');
+  if(w&&h&&h>0){
+    const imc=(w/(h*h)).toFixed(1);
+    const cat=imc<18.5?'Insuffisance':imc<25?'Normal':imc<30?'Surpoids':'Obésité';
+    el.textContent='IMC : '+imc+' ('+cat+')';
+  } else el.textContent='IMC : —';
+}
+function openAddAthlete(){
+  document.getElementById('editAthId').value='';
+  document.getElementById('athleteModalTitle').textContent='Nouvel athlète';
+  document.getElementById('saveAthBtn').textContent='Créer';
+  ['newAthName','newAthAge','newAthWeight','newAthHeight','newAthRanking'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('newAthSex').value='M';
+  document.getElementById('newAthLevel').value='regional';
+  document.getElementById('newAthRanking').value='4e série';
+  document.getElementById('imc-display').textContent='IMC : —';
+  switchAthTab('infos', document.querySelector('#athleteModal .modal-tab'));
+  document.getElementById('athleteModal').classList.add('open');
+}
+function openEditAthlete(){
+  const ath=DB.athletes.find(a=>a.id===selectedCoachAth);if(!ath)return;
+  document.getElementById('editAthId').value=ath.id;
+  document.getElementById('athleteModalTitle').textContent='Modifier — '+ath.name;
+  document.getElementById('saveAthBtn').textContent='Enregistrer';
+  document.getElementById('newAthName').value=ath.name||'';
+  document.getElementById('newAthSport').value=ath.sport||'Tennis';
+  document.getElementById('newAthSex').value=ath.sex||'M';
+  document.getElementById('newAthLevel').value=ath.level||'regional';
+  document.getElementById('newAthAge').value=ath.age||'';
+  document.getElementById('newAthWeight').value=ath.weight||'';
+  document.getElementById('newAthHeight').value=ath.height||'';
+  // Set ranking select
+  const rkSel = document.getElementById('newAthRanking');
+  if(rkSel){
+    rkSel.value = ath.rankingFR||'4e série';
+    updateLevelFromRanking(rkSel.value);
+  }
+  updateIMC();
+  switchAthTab('infos', document.querySelector('#athleteModal .modal-tab'));
+  document.getElementById('athleteModal').classList.add('open');
+}
+async async function saveAthlete(){
+  const n=document.getElementById('newAthName').value.trim();
+  const sp=document.getElementById('newAthSport').value;
+  const sx=document.getElementById('newAthSex').value;
+  // level is auto-set from ranking via updateLevelFromRanking
+  updateLevelFromRanking(document.getElementById('newAthRanking').value);
+  const lv=document.getElementById('newAthLevel').value||'regional';
+  const age=parseInt(document.getElementById('newAthAge').value)||null;
+  const wt=parseFloat(document.getElementById('newAthWeight').value)||null;
+  const ht=parseInt(document.getElementById('newAthHeight').value)||null;
+  const rk=document.getElementById('newAthRanking').value.trim()||null;
+  if(!n){toast('Entrez un nom','error');return;}
+  const editId=document.getElementById('editAthId').value;
+  if(editId){
+    // Edit existing
+    const ath=DB.athletes.find(a=>a.id===editId);
+    if(ath){Object.assign(ath,{name:n,sport:sp,sex:sx,level:lv,age,weight:wt,height:ht,rankingFR:rk});}
+    toast('Profil mis à jour !','success');
+  } else {
+    // Create new
+    DB.athletes.push({id:'a'+Date.now(),name:n,sport:sp,sex:sx,level:lv,age,weight:wt,height:ht,rankingFR:rk,cycles:[]});
+    toast('Athlète créé !','success');
+  }
+  populateAthleteSelectors();closeModal('athleteModal');renderCoach();
+  if(editId)renderCoachDetail();
+  const savedAth = editId ? DB.athletes.find(a=>a.id===editId) : DB.athletes[DB.athletes.length-1];
+  if(savedAth) await saveAthleteDB(savedAth);
+}
+async function updateAthleteLevel(newLevel){
+  const ath=DB.athletes.find(a=>a.id===selectedCoachAth);
+  if(!ath)return;
+  ath.level=newLevel;
+  renderCoachDetail();renderCoach();
+  toast('Niveau mis à jour','success');
+  await saveAthleteDB(ath);
+}
+async function deleteAthlete(){
+  if(!selectedCoachAth||!confirm('Supprimer cet athlète et toutes ses séances ?'))return;
+  const delId=selectedCoachAth;
+  DB.athletes=DB.athletes.filter(a=>a.id!==delId);
+  DB.sessions=DB.sessions.filter(s=>s.athleteId!==delId);
+  selectedCoachAth=null;document.getElementById('coachAthleteDetail').style.display='none';
+  populateAthleteSelectors();renderCoach();toast('Athlète supprimé','success');
+  await deleteAthleteDB(delId);
+}
+
+// ===================== ATHLETE LINK =====================
+function copyLink(athId){
+  const url=window.location.href.split('?')[0].split('#')[0]+'#athlete='+athId;
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn=document.getElementById('linkbtn-'+athId);
+    if(btn){btn.textContent='✓ Lien copié !';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';}
+    setTimeout(()=>{
+      if(btn){btn.textContent='🔗 Copier le lien athlète';btn.style.color='var(--text2)';btn.style.borderColor='var(--border)';}
+    },2000);
+  }).catch(()=>{
+    // Fallback
+    const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    toast('Lien copié !','success');
+  });
+}
+
+// ===================== CYCLE MENSTRUEL =====================
+let cycleTargetAthId = null;
+
+function openCycleModal(){
+  cycleTargetAthId = selectedCoachAth || (currentUser&&currentUser.athleteId);
+  if(!cycleTargetAthId)return;
+  const ath=DB.athletes.find(a=>a.id===cycleTargetAthId);if(!ath)return;
+  document.getElementById('cycleAthName').textContent=ath.name;
+  document.getElementById('cycleStart').value=selectedDate||dateKey(new Date());
+  document.getElementById('cycleEnd').value='';
+  document.getElementById('cycleModal').classList.add('open');
+}
+async function saveCycle(){
+  const start=document.getElementById('cycleStart').value;
+  const end=document.getElementById('cycleEnd').value;
+  if(!start||!end){toast('Entrez les deux dates','error');return;}
+  if(end<start){toast('La fin doit être après le début','error');return;}
+  const ath=DB.athletes.find(a=>a.id===cycleTargetAthId);if(!ath)return;
+  if(!ath.cycles)ath.cycles=[];
+  // Remove overlapping entries
+  ath.cycles=ath.cycles.filter(c=>c.end<start||c.start>end);
+  ath.cycles.push({start,end});
+  ath.cycles.sort((a,b)=>a.start.localeCompare(b.start));
+  closeModal('cycleModal');
+  toast('Période enregistrée','success');
+  await saveAthleteDB(ath);
+  renderCalendar();
+  if(currentPage==='entry')renderDayKpis();
+}
+function isInCycle(athId, dateStr){
+  const ath=DB.athletes.find(a=>a.id===athId);if(!ath||!ath.cycles)return false;
+  return ath.cycles.some(c=>dateStr>=c.start&&dateStr<=c.end);
+}
+function isFemale(athId){
+  const ath=DB.athletes.find(a=>a.id===athId);
+  return ath&&ath.sex==='F';
+}
+
+// ===================== UTILS =====================
+function populateAthleteSelectors(){
+  const o=DB.athletes.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  document.getElementById('entryAthleteSelect').innerHTML=o;
+  document.getElementById('suiviAthleteSelect').innerHTML=o;
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function toast(msg,type='success'){
+  const t=document.createElement('div');
+  t.className='toast toast-'+type;t.textContent=msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+});
+// Auto-start
+(async () => {
+  try {
+    await detectMode();
+  } catch(err) {
+    console.error('Init error:', err);
+    document.getElementById('loadingOverlay').innerHTML='<div style="color:var(--red);font-size:.85rem;text-align:center;padding:40px">Erreur de connexion à la base de données.<br><br>'+err.message+'</div>';
+  }
+})();
+</script>
+</body>
+</html>
