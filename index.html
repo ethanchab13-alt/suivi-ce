@@ -706,12 +706,14 @@ function computeMetrics(allSessions, _thresholds){
 
   let ctl=0, atl=0;
   const rows=[];
+  const CE_SCALE=10; // Normalize Foster CE to Banister-compatible scale (~TSS)
 
   days.forEach(date=>{
     const daySess=byDate[date]||[];
     const ce=daySess.reduce((s,x)=>s+computeCE(x.rpe,x.duration),0);
-    ctl=ctl*K_CTL+ce;
-    atl=atl*K_ATL+ce;
+    const ceNorm=ce/CE_SCALE; // scaled load for Banister model
+    ctl=ctl*K_CTL+(1-K_CTL)*ceNorm; // proper exponential weighted moving average
+    atl=atl*K_ATL+(1-K_ATL)*ceNorm; // proper EWMA formula
     const tsb=ctl-atl;
     rows.push({date,sessions:daySess,ce,ctl:Math.round(ctl*10)/10,atl:Math.round(atl*10)/10,tsb:Math.round(tsb*10)/10});
   });
@@ -1179,16 +1181,16 @@ function renderDayKpis(){
     const cycMsg=isFemale(athId)&&isInCycle(athId,selectedDate)?'<div class="cycle-badge" style="margin-top:6px">🌸 Période menstruelle — seuils adaptés</div>':'';
     row.innerHTML='<div style="color:var(--text2);font-size:.78rem">Aucune séance ce jour'+cycMsg+'</div>';return;
   }
-  const cycleBannerHtml = isFemale(athId)&&isInCycle(athId,selectedDate)
-    ? '<div id="cycleDayBanner" style="margin-top:8px;padding:8px 12px;background:rgba(236,72,153,.07);border:1px solid rgba(236,72,153,.25);border-radius:8px;font-size:.7rem;color:#f472b6">🌸 Période menstruelle active — seuils de charge réduits de 20%, récupération prioritaire.</div>'
-    : '<div id="cycleDayBanner"></div>';
   row.innerHTML=`
     <div class="kpi-card blue"><div class="kpi-label">CE total</div><div class="kpi-val" style="color:var(--accent)">${day.ce}</div><div class="kpi-sub">${day.sessions.length} séance(s)</div></div>
     <div class="kpi-card ${day.monotony>2?'red':day.monotony>1.5?'orange':'green'}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${day.monotony}</div></div>
     <div class="kpi-card ${day.acwr>1.5||day.acwr<0.8?'red':day.acwr>1.3?'orange':'green'}"><div class="kpi-label">ACWR</div><div class="kpi-val">${day.acwr}</div></div>
     <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${day.ctl}</div></div>
     <div class="kpi-card ${day.tsb<-60?'red':day.tsb<-10?'orange':'green'}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${day.tsb>0?'+':''}${day.tsb}</div></div>
-  `+cycleBannerHtml;
+  `;
+  if(isFemale(athId)&&isInCycle(athId,selectedDate)){
+    row.insertAdjacentHTML('afterend','<div style="margin-top:8px;padding:8px 12px;background:rgba(236,72,153,.07);border:1px solid rgba(236,72,153,.25);border-radius:8px;font-size:.7rem;color:#f472b6">🌸 Période menstruelle active — seuils de charge réduits de 20%, récupération prioritaire.</div>');
+  }
 }
 function renderEntry(){
   if(currentUser&&currentUser.role==='coach')document.getElementById('athleteSelectorEntry').style.display='block';
