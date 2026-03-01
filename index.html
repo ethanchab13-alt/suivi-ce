@@ -723,12 +723,13 @@ function computeMetrics(allSessions, _thresholds){
     const w7=rows.slice(Math.max(0,i-6),i+1).map(r=>r.ce);
     const m7=w7.reduce((a,b)=>a+b,0)/w7.length;
     const sd=Math.sqrt(w7.reduce((a,b)=>a+(b-m7)**2,0)/w7.length);
-    const mono=sd===0?0:m7/sd;
+    const mono=sd===0?(m7>0?10:0):m7/sd; // sd=0 + charge = monotonie max
     const strain=m7*7*(mono||0);
     const sum7=w7.reduce((a,b)=>a+b,0);
     const w28=rows.slice(Math.max(0,i-27),i+1).map(r=>r.ce);
-    const m28=w28.reduce((a,b)=>a+b,0)/w28.length;
-    const acwr=m28===0?0:m7/m28;
+    const sum28=w28.reduce((a,b)=>a+b,0);
+    const m28fixed=sum28/28; // toujours /28 même si <28j de données
+    const acwr=m28fixed===0?0:Math.round((m7/m28fixed)*100)/100;
     row.mean7=Math.round(m7*10)/10;
     row.monotony=Math.round(mono*100)/100;
     row.strain=Math.round(strain);
@@ -1039,7 +1040,7 @@ function renderDashboard(){
       <td><span class="session-tag ${r.type}" style="font-size:.6rem;padding:2px 7px">${r.type}</span></td>
       <td style="color:${rpeColor(r.rpe)};font-weight:600">${r.rpe}/10</td>
       <td>${r.duration}min</td>
-      <td>${r.sCE}</td>
+      <td>${r.sCE}${r.sessions.length>1?'<span style="font-size:.6rem;color:var(--text2)"> /'+r.ce+'j</span>':''}</td>
       <td>${r.monotony}</td>
       <td>${r.strain}</td>
       <td style="color:${acwrColor(r.acwr,thr)};font-weight:600">${r.acwr}</td>
@@ -1295,13 +1296,17 @@ function renderSuivi(){
 
     const lastW=weeks[weeks.length-1];
     if(lastW){
+      const moWC=lastW.monotony>thrS.monoHi?'red':lastW.monotony>thrS.monoMed?'orange':'green';
+      const acWC=lastW.acwr>thrS.acwrHi||lastW.acwr<thrS.acwrLo?'red':lastW.acwr>(thrS.acwrHi*0.87)?'orange':'green';
+      const tsbWC=lastW.tsb<thrS.tsbVLow?'red':lastW.tsb<thrS.tsbLow?'orange':'green';
+      const ceWC=lastW.ceMoy>thrS.ceMed?'red':lastW.ceMoy>(thrS.ceMed*0.7)?'orange':'green';
       document.getElementById('weeklyKpiRow').innerHTML=`
         <div class="kpi-card blue"><div class="kpi-label">CE Semaine</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceTotal}</div><div class="kpi-sub">${lastW.nbSessions} séances</div></div>
-        <div class="kpi-card blue"><div class="kpi-label">CE moy/jour</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceMoy}</div></div>
-        <div class="kpi-card ${lastW.monotony>2?'red':lastW.monotony>1.5?'orange':'green'}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${lastW.monotony}</div></div>
-        <div class="kpi-card ${lastW.acwr>1.5||lastW.acwr<0.8?'red':lastW.acwr>1.3?'orange':'green'}"><div class="kpi-label">ACWR</div><div class="kpi-val">${lastW.acwr}</div></div>
+        <div class="kpi-card ${ceWC}"><div class="kpi-label">CE moy/jour</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceMoy}</div><div class="kpi-sub">seuil: ${Math.round(thrS.ceMed)}</div></div>
+        <div class="kpi-card ${moWC}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${lastW.monotony}</div><div class="kpi-sub">seuil: ${thrS.monoHi.toFixed(2)}</div></div>
+        <div class="kpi-card ${acWC}"><div class="kpi-label">ACWR</div><div class="kpi-val">${lastW.acwr}</div><div class="kpi-sub">optimal: ${thrS.acwrLo}–${thrS.acwrHi}</div></div>
         <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${lastW.ctl}</div></div>
-        <div class="kpi-card ${lastW.tsb<-60?'red':lastW.tsb<-10?'orange':'green'}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${lastW.tsb>0?'+':''}${lastW.tsb}</div></div>
+        <div class="kpi-card ${tsbWC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${lastW.tsb>0?'+':''}${lastW.tsb}</div><div class="kpi-sub">seuil: ${thrS.tsbLow}</div></div>
       `;
     }
   } else {
@@ -1359,7 +1364,8 @@ function renderSuivi(){
   dc('suiviStrainChart');
   charts.suiviStrainChart=new Chart(document.getElementById('suiviStrainChart').getContext('2d'),{
     type:'bar',
-    data:{labels,datasets:[{label:'Contrainte',data:strain,backgroundColor:strain.map(v=>v>5000?'rgba(255,56,96,.75)':v>3000?'rgba(255,159,28,.75)':'rgba(0,229,255,.65)'),borderRadius:4}]},
+    const strainHi=thrS.ceHi*7*thrS.monoHi, strainMed=thrS.ceMed*7*thrS.monoMed;
+    data:{labels,datasets:[{label:'Contrainte',data:strain,backgroundColor:strain.map(v=>v>strainHi?'rgba(255,56,96,.75)':v>strainMed?'rgba(255,159,28,.75)':'rgba(0,229,255,.65)'),borderRadius:4}]},
     options:baseOpts()
   });
 
@@ -1381,7 +1387,7 @@ function renderSuivi(){
         <td><span class="session-tag ${r.type}" style="font-size:.6rem;padding:2px 7px">${r.type}</span></td>
         <td style="color:${rpeColor(r.rpe)};font-weight:600">${r.rpe}/10</td>
         <td>${r.duration}min</td>
-        <td style="font-weight:600">${r.sCE}</td>
+        <td style="font-weight:600">${r.sCE}${r.sessions.length>1?'<span style="font-size:.6rem;color:var(--text2)"> /'+r.ce+'j</span>':''}</td>
         <td>${r.sum7}</td>
         <td>${r.monotony}</td>
         <td>${r.strain}</td>
@@ -1446,14 +1452,11 @@ function renderCoachDetail(){
   // Show cycle button only for female athletes
   const cycleBtn=document.getElementById('coachCycleBtn');
   if(cycleBtn)cycleBtn.style.display=ath.sex==='F'?'inline-flex':'none';
-  const allM=computeMetrics(getSessions(selectedCoachAth));
-  const recent14=allM.slice(-14);
-  const last=allM.filter(r=>r.sessions.length>0).slice(-1)[0];
-  const kR=document.getElementById('coachKpiRow');
   const thrC=computeThresholds(selectedCoachAth);
-  const allMC=computeMetrics(getSessions(selectedCoachAth),thrC);
-  const lastC=allMC.filter(r=>r.sessions.length>0).slice(-1)[0]||last;
-  const lc=lastC||last;
+  const allM=computeMetrics(getSessions(selectedCoachAth),thrC);
+  const recent14=allM.slice(-14);
+  const lc=allM.filter(r=>r.sessions.length>0).slice(-1)[0];
+  const kR=document.getElementById('coachKpiRow');
   if(lc){
     const ceCC=lc.ce>thrC.ceHi?'red':lc.ce>thrC.ceMed?'orange':'green';
     const moCC=lc.monotony>thrC.monoHi?'red':lc.monotony>thrC.monoMed?'orange':'green';
