@@ -1491,9 +1491,9 @@ function renderSuivi(){
 
   // Strain
   dc('suiviStrainChart');
+  const strainHi=thrS.ceHi*7*thrS.monoHi, strainMed=thrS.ceMed*7*thrS.monoMed;
   charts.suiviStrainChart=new Chart(document.getElementById('suiviStrainChart').getContext('2d'),{
     type:'bar',
-    const strainHi=thrS.ceHi*7*thrS.monoHi, strainMed=thrS.ceMed*7*thrS.monoMed;
     data:{labels,datasets:[{label:'Contrainte',data:strain,backgroundColor:strain.map(v=>v>strainHi?'rgba(255,56,96,.75)':v>strainMed?'rgba(255,159,28,.75)':'rgba(0,229,255,.65)'),borderRadius:4}]},
     options:baseOpts()
   });
