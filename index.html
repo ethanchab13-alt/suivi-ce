@@ -200,6 +200,9 @@
         <div class="nav-item" id="nav-coach" onclick="showPage('coach')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Athlètes
         </div>
+        <div class="nav-item" id="nav-guide" onclick="showPage('guide')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Guide
+        </div>
       </div>
     </div>
 
@@ -207,8 +210,15 @@
 
       <!-- DASHBOARD -->
       <div class="page active" id="page-dashboard">
-        <div class="page-title">Tableau de bord</div>
-        <div class="page-sub" id="dashSub">Aperçu global — Méthode Foster</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+          <div>
+            <div class="page-title">Tableau de bord</div>
+            <div class="page-sub" id="dashSub" style="margin-bottom:0">Aperçu global</div>
+          </div>
+          <div id="dashAthSelector" style="display:none">
+            <select id="dashAthleteSelect" onchange="renderDashboard()" style="padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.82rem;outline:none;min-width:180px"></select>
+          </div>
+        </div>
         <div id="alertsContainer" class="alerts-container"></div>
         <div class="cards-row" id="kpiRow"></div>
         <div class="chart-card">
@@ -233,7 +243,7 @@
           </div>
           <div class="chart-card" style="margin-bottom:0">
             <div class="chart-header">
-              <div><div class="chart-title">Score de Fitness</div><div style="font-size:.62rem;color:#a855f7;margin-top:2px">Modèle Banister</div></div>
+              <div><div class="chart-title">Score de Fitness</div></div>
             </div>
             <div class="chart-wrap" style="height:200px"><canvas id="dashFitnessChart"></canvas></div>
           </div>
@@ -287,7 +297,7 @@
       <!-- SUIVI -->
       <div class="page" id="page-suivi">
         <div class="page-title">Suivi détaillé</div>
-        <div class="page-sub">Foster CE · Fitness · Fatigue · Forme — Vue quotidienne ou hebdomadaire</div>
+        <div class="page-sub">Vue détaillée par athlète</div>
 
         <div class="ctrl-bar">
           <div id="suiviAthSelector" style="display:none" class="ctrl-grp" style="flex:1;min-width:180px">
@@ -320,24 +330,17 @@
           <div class="chart-header">
             <div>
               <div class="chart-title" id="suiviCeTitle">CE — Vue quotidienne</div>
-              <div style="font-size:.68rem;color:var(--text2);margin-top:3px">
-                <span id="ceZoneLegend"><span style="color:var(--green)">●</span> Optimal &lt;500 &nbsp; <span style="color:var(--orange)">●</span> Attention 500–800 &nbsp; <span style="color:var(--red)">●</span> Surcharge &gt;800</span>
-              </div>
+<span id="ceZoneLegend" style="display:none"></span>
             </div>
           </div>
           <div class="chart-wrap" style="height:280px"><canvas id="suiviCeChart"></canvas></div>
         </div>
 
-        <div class="fitness-legend">
-          <strong>Score de Fitness — Modèle de Banister :</strong> &nbsp;
-          <span style="color:#00c896">Fitness (CTL, τ=45j)</span> = adaptation à long terme (forme physique accumulée) &nbsp;·&nbsp;
-          <span style="color:#ff3860">Fatigue (ATL, τ=15j)</span> = fatigue à court terme &nbsp;·&nbsp;
-          <span style="color:#a855f7">Forme (TSB)</span> = Fitness − Fatigue · Positif = frais · Négatif = fatigué
-        </div>
+
 
         <div class="chart-card">
           <div class="chart-header">
-            <div><div class="chart-title">Score de Fitness — Banister (CTL/ATL/TSB)</div></div>
+            <div><div class="chart-title">Fitness / Fatigue / Forme</div></div>
             <div class="legend">
               <div class="legend-item"><div style="width:14px;height:2px;background:var(--green)"></div>Fitness CTL</div>
               <div class="legend-item"><div style="width:14px;height:2px;background:var(--red)"></div>Fatigue ATL</div>
@@ -349,7 +352,7 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">
           <div class="chart-card" style="margin-bottom:0">
-            <div class="chart-header"><div class="chart-title">Monotonie</div><div style="font-size:.62rem;color:var(--text2)">Seuil: <span style="color:var(--red)">2.0</span></div></div>
+            <div class="chart-header"><div class="chart-title">Monotonie</div></div>
             <div class="chart-wrap" style="height:190px"><canvas id="suiviMonotonyChart"></canvas></div>
           </div>
           <div class="chart-card" style="margin-bottom:0">
@@ -357,7 +360,7 @@
             <div class="chart-wrap" style="height:190px"><canvas id="suiviStrainChart"></canvas></div>
           </div>
           <div class="chart-card" style="margin-bottom:0">
-            <div class="chart-header"><div class="chart-title">ACWR</div><div style="font-size:.62rem;color:var(--text2)">Optimal: <span style="color:var(--green)">0.8–1.3</span></div></div>
+            <div class="chart-header"><div class="chart-title">ACWR</div></div>
             <div class="chart-wrap" style="height:190px"><canvas id="suiviAcwrChart"></canvas></div>
           </div>
         </div>
@@ -407,6 +410,120 @@
             <div class="chart-wrap" style="height:210px"><canvas id="coachChart"></canvas></div>
           </div>
         </div>
+      </div>
+
+      <!-- GUIDE -->
+      <div class="page" id="page-guide">
+        <div class="page-title">Guide des indicateurs</div>
+        <div class="page-sub">Comprendre la méthode Foster et le modèle de Banister</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-title" style="margin-bottom:14px">⚡ CE — Charge d'Entraînement</div>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="font-size:1rem;color:var(--accent);font-family:'Poppins',sans-serif;font-weight:600;margin-bottom:8px">CE = RPE × Durée (minutes)</div>
+              Le CE est la brique de base de la méthode Foster. Il quantifie l'effort d'une séance en multipliant l'intensité perçue (RPE) par la durée.<br><br>
+              <strong style="color:var(--text)">Exemple :</strong> 90min à RPE 7 → CE = 630<br><br>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(0,200,150,.1);color:var(--green);font-size:.7rem;border:1px solid rgba(0,200,150,.2)">Optimal &lt; 500</span>
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(255,159,28,.1);color:var(--orange);font-size:.7rem;border:1px solid rgba(255,159,28,.2)">Attention 500–800</span>
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(255,56,96,.1);color:var(--red);font-size:.7rem;border:1px solid rgba(255,56,96,.2)">Surcharge &gt; 800</span>
+              </div>
+              <div style="margin-top:10px;font-size:.68rem;opacity:.7">Les seuils sont adaptatifs selon le niveau de l'athlète.</div>
+            </div>
+          </div>
+
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-title" style="margin-bottom:14px">📊 Monotonie</div>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="font-size:1rem;color:var(--orange);font-family:'Poppins',sans-serif;font-weight:600;margin-bottom:8px">Monotonie = Moyenne 7j ÷ Écart-type 7j</div>
+              Mesure la répétitivité des charges sur 7 jours. Une monotonie élevée signifie que l'athlète s'entraîne chaque jour avec des charges similaires, sans variation — ce qui augmente le risque de blessure même à charge normale.<br><br>
+              <strong style="color:var(--text)">Clé :</strong> La variation est protectrice. Alterner jours lourds et légers réduit la monotonie.<br><br>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(0,200,150,.1);color:var(--green);font-size:.7rem;border:1px solid rgba(0,200,150,.2)">OK &lt; 1.5</span>
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(255,159,28,.1);color:var(--orange);font-size:.7rem;border:1px solid rgba(255,159,28,.2)">Attention 1.5–2.0</span>
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(255,56,96,.1);color:var(--red);font-size:.7rem;border:1px solid rgba(255,56,96,.2)">Critique &gt; 2.0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-title" style="margin-bottom:14px">🔗 Contrainte (Strain)</div>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="font-size:1rem;color:var(--accent);font-family:'Poppins',sans-serif;font-weight:600;margin-bottom:8px">Contrainte = Σ CE 7j × Monotonie</div>
+              Combinaison de la charge totale hebdomadaire et de sa répétitivité. C'est l'indicateur de "stress cumulé". Une charge élevée ET monotone est beaucoup plus dangereuse que chacune prise séparément.<br><br>
+              <strong style="color:var(--text)">Exemple :</strong> CE 7j = 4200, Monotonie = 2.5 → Contrainte = 10 500 (dangereux)<br><br>
+              <div style="font-size:.68rem;opacity:.7">Les seuils sont calculés dynamiquement selon le niveau et l'historique de l'athlète.</div>
+            </div>
+          </div>
+
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-title" style="margin-bottom:14px">⚖️ ACWR — Ratio Charge Aiguë/Chronique</div>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="font-size:1rem;color:var(--accent);font-family:'Poppins',sans-serif;font-weight:600;margin-bottom:8px">ACWR = CE moy 7j ÷ CE moy 28j</div>
+              Compare ce que l'athlète fait cette semaine à ce qu'il fait habituellement. C'est le meilleur prédicteur de blessure issu de la recherche (Gabbett, 2016).<br><br>
+              <strong style="color:var(--text)">Zone optimale :</strong> 0.8 à 1.3 — l'athlète progresse sans se surcharger.<br>
+              <strong style="color:var(--red)">Danger :</strong> &gt; 1.5 — augmentation trop brutale de la charge aiguë.<br><br>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(0,200,150,.1);color:var(--green);font-size:.7rem;border:1px solid rgba(0,200,150,.2)">Optimal 0.8–1.3</span>
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(255,159,28,.1);color:var(--orange);font-size:.7rem;border:1px solid rgba(255,159,28,.2)">Attention 1.3–1.5</span>
+                <span style="padding:3px 10px;border-radius:6px;background:rgba(255,56,96,.1);color:var(--red);font-size:.7rem;border:1px solid rgba(255,56,96,.2)">Risque &gt; 1.5</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title" style="margin-bottom:14px">🏋️ Modèle de Banister — Fitness · Fatigue · Forme</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="color:#00c896;font-family:'Poppins',sans-serif;font-weight:600;font-size:.9rem;margin-bottom:8px">Fitness (CTL) — τ = 45 jours</div>
+              Adaptation à long terme. Représente la capacité physique accumulée sur 6 semaines. Monte lentement, descend lentement.<br><br>
+              Une Fitness élevée = athlète bien entraîné sur la durée.<br><br>
+              <span style="font-size:.68rem;opacity:.7">Calculée par moyenne mobile exponentielle avec constante de temps 45j.</span>
+            </div>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="color:#ff3860;font-family:'Poppins',sans-serif;font-weight:600;font-size:.9rem;margin-bottom:8px">Fatigue (ATL) — τ = 15 jours</div>
+              Fatigue accumulée récente. Réagit rapidement aux changements de charge (2 semaines). Une semaine chargée fait monter l'ATL en 3–4 jours.<br><br>
+              Une Fatigue élevée = corps sous stress actuellement.<br><br>
+              <span style="font-size:.68rem;opacity:.7">Même formule que CTL mais constante de temps 15j — plus réactive.</span>
+            </div>
+            <div style="font-size:.78rem;color:var(--text2);line-height:1.9">
+              <div style="color:#a855f7;font-family:'Poppins',sans-serif;font-weight:600;font-size:.9rem;margin-bottom:8px">Forme (TSB) = Fitness − Fatigue</div>
+              Indique si l'athlète est prêt à performer.<br><br>
+              <strong style="color:var(--green)">TSB positif</strong> = frais, récupéré, prêt à performer<br>
+              <strong style="color:var(--orange)">TSB légèrement négatif</strong> = en charge normale, développement<br>
+              <strong style="color:var(--red)">TSB très négatif</strong> = fatigue excessive, risque de surentraînement<br><br>
+              <span style="font-size:.68rem;opacity:.7">Avant une compétition, on cherche un TSB positif (affûtage).</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title" style="margin-bottom:14px">🌸 Cycle menstruel & charge d'entraînement</div>
+          <div style="font-size:.78rem;color:var(--text2);line-height:1.9;max-width:700px">
+            La recherche montre que les performances et la tolérance à l'effort varient selon les phases du cycle. Pendant les règles (phase menstruelle), la tolérance à la douleur diminue, la fatigue perçue augmente et le risque de blessure est légèrement plus élevé.<br><br>
+            <strong style="color:#f472b6">Ajustements automatiques pendant les règles :</strong><br>
+            · Seuils CE réduits de 20% — une charge modérée est préférable<br>
+            · ACWR plus sensible — éviter les pics de charge<br>
+            · Récupération prioritaire — les jours de repos sont doublement bénéfiques<br><br>
+            <span style="font-size:.68rem;opacity:.7">Ces ajustements sont indicatifs. Chaque athlète réagit différemment — l'important est de renseigner les périodes pour que le coach puisse contextualiser les données.</span>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title" style="margin-bottom:14px">🎯 Échelle RPE (Rate of Perceived Exertion)</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+            ${[['0','Repos complet','#4a9eff'],['1','Très léger','#3dc4ff'],['2','Léger','#00e5ff'],['3','Modéré','#a3e635'],['4','Un peu difficile','#84cc16'],['5','Difficile','#fbbf24'],['6','Difficile+','#f97316'],['7','Très difficile','#ef4444'],['8','Très difficile+','#dc2626'],['9','Proche du max','#b91c1c'],['10','Maximum absolu','#7f1d1d']].map(([v,l,c])=>`
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:6px;background:${c}22;color:${c};font-family:'Poppins',sans-serif;font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ${c}44">${v}</div>
+              <div style="font-size:.72rem;color:var(--text2)">${l}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -662,6 +779,7 @@ function showPage(p){
   else if(p==='entry')renderEntry();
   else if(p==='suivi')renderSuivi();
   else if(p==='coach')renderCoach();
+  else if(p==='guide'){} // static page
 }
 
 // ===================== HELPERS =====================
@@ -933,9 +1051,20 @@ function setPeriod(d,btn){
   btn.classList.add('active');renderDashboard();
 }
 function renderDashboard(){
-  const athId=currentUser&&currentUser.role==='athlete'?currentUser.athleteId:DB.athletes[0]?.id;
+  // Show athlete selector for coach
+  const sel=document.getElementById('dashAthSelector');
+  const selEl=document.getElementById('dashAthleteSelect');
+  if(currentUser&&currentUser.role==='coach'){
+    if(sel)sel.style.display='block';
+    if(selEl&&!selEl.options.length){
+      selEl.innerHTML=DB.athletes.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    }
+  }
+  const athId=currentUser&&currentUser.role==='athlete'
+    ?currentUser.athleteId
+    :(selEl?.value||DB.athletes[0]?.id);
   const ath=DB.athletes.find(a=>a.id===athId);
-  document.getElementById('dashSub').textContent=ath?`Suivi de ${ath.name} — Méthode Foster + Banister`:'Aperçu Foster';
+  document.getElementById('dashSub').textContent=ath?ath.name:'—';
 
   const thr=computeThresholds(athId);
   const allM=computeMetrics(getSessions(athId),thr);
@@ -952,12 +1081,12 @@ function renderDashboard(){
     const acwrC=last.acwr>thr.acwrHi||last.acwr<thr.acwrLo?'red':last.acwr>(thr.acwrHi*0.87)?'orange':'green';
     const formeC=last.tsb<thr.tsbVLow?'red':last.tsb<thr.tsbLow?'orange':'green';
     kpiRow.innerHTML=`
-      <div class="kpi-card ${ceC}"><div class="kpi-label">CE du jour</div><div class="kpi-val" style="color:var(--${ceC==='green'?'green':ceC==='orange'?'orange':'red'})">${last.ce}</div><div class="kpi-sub">RPE × Durée</div></div>
-      <div class="kpi-card ${monoC}"><div class="kpi-label">Monotonie</div><div class="kpi-val" style="color:var(--${monoC==='green'?'green':monoC==='orange'?'orange':'red'})">${last.monotony}</div><div class="kpi-sub">Moy7 / Écart-type</div></div>
-      <div class="kpi-card blue"><div class="kpi-label">Contrainte</div><div class="kpi-val" style="color:var(--accent)">${last.strain}</div><div class="kpi-sub">Moy7×7×Mono</div></div>
-      <div class="kpi-card ${acwrC}"><div class="kpi-label">ACWR</div><div class="kpi-val" style="color:var(--${acwrC==='green'?'green':acwrC==='orange'?'orange':'red'})">${last.acwr}</div><div class="kpi-sub">Aigu / Chronique</div></div>
-      <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${last.ctl}</div><div class="kpi-sub">τ = 45 jours</div></div>
-      <div class="kpi-card ${formeC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val" style="color:var(--${formeC==='green'?'green':formeC==='orange'?'orange':'red'})">${last.tsb>0?'+':''}${last.tsb}</div><div class="kpi-sub">CTL − ATL</div></div>
+      <div class="kpi-card ${ceC}"><div class="kpi-label">CE du jour</div><div class="kpi-val" style="color:var(--${ceC==='green'?'green':ceC==='orange'?'orange':'red'})">${last.ce}</div></div>
+      <div class="kpi-card ${monoC}"><div class="kpi-label">Monotonie</div><div class="kpi-val" style="color:var(--${monoC==='green'?'green':monoC==='orange'?'orange':'red'})">${last.monotony}</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Contrainte</div><div class="kpi-val" style="color:var(--accent)">${last.strain}</div></div>
+      <div class="kpi-card ${acwrC}"><div class="kpi-label">ACWR</div><div class="kpi-val" style="color:var(--${acwrC==='green'?'green':acwrC==='orange'?'orange':'red'})">${last.acwr}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Fitness</div><div class="kpi-val" style="color:#a855f7">${last.ctl}</div></div>
+      <div class="kpi-card ${formeC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val" style="color:var(--${formeC==='green'?'green':formeC==='orange'?'orange':'red'})">${last.tsb>0?'+':''}${last.tsb}</div></div>
     `;
   } else {
     kpiRow.innerHTML='<div style="color:var(--text2);font-size:.8rem;grid-column:1/-1">Aucune donnée — saisissez des séances pour commencer</div>';
@@ -1062,7 +1191,7 @@ function renderAlerts(last,container,thr){
   const cycleBanner = thr&&thr.inCycle ? '<div style="margin-bottom:10px;padding:8px 14px;background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.25);border-radius:8px;font-size:.72rem;color:#f472b6">🌸 Période menstruelle — seuils de charge réduits de 20%. Privilégier récupération et intensité modérée.</div>' : '';
 
   // Source badge info
-  const srcBadge = thr ? `<span style="font-size:.6rem;color:var(--text2);margin-left:6px;opacity:.7">[seuils ${thr.source} · ${thr.levelLabel} · ${thr.sessionCount} séances]</span>` : '';
+  const srcBadge = ''; // removed from main view — visible in guide page
 
   // ACWR
   if(last.acwr>t.acwrHi)       indicators.push({key:'ACWR',level:'bad', label:'ACWR critique ('+last.acwr+')',  note:'Risque de blessure élevé'});
@@ -1302,11 +1431,11 @@ function renderSuivi(){
       const ceWC=lastW.ceMoy>thrS.ceMed?'red':lastW.ceMoy>(thrS.ceMed*0.7)?'orange':'green';
       document.getElementById('weeklyKpiRow').innerHTML=`
         <div class="kpi-card blue"><div class="kpi-label">CE Semaine</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceTotal}</div><div class="kpi-sub">${lastW.nbSessions} séances</div></div>
-        <div class="kpi-card ${ceWC}"><div class="kpi-label">CE moy/jour</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceMoy}</div><div class="kpi-sub">seuil: ${Math.round(thrS.ceMed)}</div></div>
-        <div class="kpi-card ${moWC}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${lastW.monotony}</div><div class="kpi-sub">seuil: ${thrS.monoHi.toFixed(2)}</div></div>
-        <div class="kpi-card ${acWC}"><div class="kpi-label">ACWR</div><div class="kpi-val">${lastW.acwr}</div><div class="kpi-sub">optimal: ${thrS.acwrLo}–${thrS.acwrHi}</div></div>
-        <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${lastW.ctl}</div></div>
-        <div class="kpi-card ${tsbWC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${lastW.tsb>0?'+':''}${lastW.tsb}</div><div class="kpi-sub">seuil: ${thrS.tsbLow}</div></div>
+        <div class="kpi-card ${ceWC}"><div class="kpi-label">CE moy/jour</div><div class="kpi-val" style="color:var(--accent)">${lastW.ceMoy}</div></div>
+        <div class="kpi-card ${moWC}"><div class="kpi-label">Monotonie</div><div class="kpi-val">${lastW.monotony}</div></div>
+        <div class="kpi-card ${acWC}"><div class="kpi-label">ACWR</div><div class="kpi-val">${lastW.acwr}</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Fitness</div><div class="kpi-val" style="color:#a855f7">${lastW.ctl}</div></div>
+        <div class="kpi-card ${tsbWC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val">${lastW.tsb>0?'+':''}${lastW.tsb}</div></div>
       `;
     }
   } else {
@@ -1463,12 +1592,12 @@ function renderCoachDetail(){
     const acCC=lc.acwr>thrC.acwrHi||lc.acwr<thrC.acwrLo?'red':lc.acwr>(thrC.acwrHi*.87)?'orange':'green';
     const tsbCC=lc.tsb<thrC.tsbVLow?'red':lc.tsb<thrC.tsbLow?'orange':'green';
     kR.innerHTML=`
-      <div class="kpi-card ${ceCC}"><div class="kpi-label">CE dernier</div><div class="kpi-val" style="color:var(--${ceCC==='green'?'green':ceCC==='orange'?'orange':'red'})">${lc.ce}</div><div class="kpi-sub">seuil warn: ${Math.round(thrC.ceMed)}</div></div>
-      <div class="kpi-card ${moCC}"><div class="kpi-label">Monotonie</div><div class="kpi-val" style="color:var(--${moCC==='green'?'green':moCC==='orange'?'orange':'red'})">${lc.monotony}</div><div class="kpi-sub">seuil: ${thrC.monoHi.toFixed(2)}</div></div>
-      <div class="kpi-card ${acCC}"><div class="kpi-label">ACWR</div><div class="kpi-val" style="color:var(--${acCC==='green'?'green':acCC==='orange'?'orange':'red'})">${lc.acwr}</div><div class="kpi-sub">max: ${thrC.acwrHi}</div></div>
-      <div class="kpi-card purple"><div class="kpi-label">Fitness CTL</div><div class="kpi-val" style="color:#a855f7">${lc.ctl}</div></div>
+      <div class="kpi-card ${ceCC}"><div class="kpi-label">CE dernier</div><div class="kpi-val" style="color:var(--${ceCC==='green'?'green':ceCC==='orange'?'orange':'red'})">${lc.ce}</div></div>
+      <div class="kpi-card ${moCC}"><div class="kpi-label">Monotonie</div><div class="kpi-val" style="color:var(--${moCC==='green'?'green':moCC==='orange'?'orange':'red'})">${lc.monotony}</div></div>
+      <div class="kpi-card ${acCC}"><div class="kpi-label">ACWR</div><div class="kpi-val" style="color:var(--${acCC==='green'?'green':acCC==='orange'?'orange':'red'})">${lc.acwr}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Fitness</div><div class="kpi-val" style="color:#a855f7">${lc.ctl}</div></div>
       <div class="kpi-card ${tsbCC}"><div class="kpi-label">Forme TSB</div><div class="kpi-val" style="color:var(--${tsbCC==='green'?'green':tsbCC==='orange'?'orange':'red'})">${lc.tsb>0?'+':''}${lc.tsb}</div></div>
-      <div class="kpi-card ${lc.risk==='high'?'red':lc.risk==='medium'?'orange':'green'}"><div class="kpi-label">Risque <span style="font-size:.55rem;opacity:.6">${thrC.source}</span></div><div class="kpi-val" style="font-size:.95rem;padding-top:5px">${riskBadge(lc.risk)}</div></div>
+      <div class="kpi-card ${lc.risk==='high'?'red':lc.risk==='medium'?'orange':'green'}"><div class="kpi-label">Risque</div><div class="kpi-val" style="font-size:.95rem;padding-top:5px">${riskBadge(lc.risk)}</div></div>
     `;
   } else kR.innerHTML='<div style="color:var(--text2);font-size:.78rem">Aucune donnée</div>';
   dc('coachChart');
@@ -1659,6 +1788,7 @@ function populateAthleteSelectors(){
   const o=DB.athletes.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
   document.getElementById('entryAthleteSelect').innerHTML=o;
   document.getElementById('suiviAthleteSelect').innerHTML=o;
+  const ds=document.getElementById('dashAthleteSelect');if(ds)ds.innerHTML=o;
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function toast(msg,type='success'){
